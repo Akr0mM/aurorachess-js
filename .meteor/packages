@@ -26,3 +26,4 @@ blaze-hot               # Update files using Blaze's API with HMR
 kadira:flow-router
 kadira:blaze-layout
 accounts-base
+meteortesting:mocha
