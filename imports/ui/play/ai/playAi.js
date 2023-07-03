@@ -21,26 +21,19 @@ Template.playai.onRendered(() => {
 
     try {
       const move = game.move({ from, to, promotion: 'q' });
-
-      if (move === null) {
-        throw new Error('Mouvement invalide');
-      }
-      // move valide
     } catch (error) {
-      // move invalide
-
       return 'snapback';
     }
   }
 
   // eslint-disable-next-line consistent-return
   function onSnapEnd() {
-    $('#evaluation').text(aurora.evaluateStaticPosition(game.fen()).toFixed(2));
+    $('#evaluation').text(aurora.evaluateStaticPosition(game.fen()));
 
     aurora.makeMove();
     board.position(game.fen());
 
-    $('#evaluation').text(aurora.evaluateStaticPosition(game.fen()).toFixed(2));
+    $('#evaluation').text(aurora.evaluateStaticPosition(game.fen()));
 
     if (game.isCheckmate()) {
       if (game.turn() === 'w') return console.log('Black won');

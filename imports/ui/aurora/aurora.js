@@ -32,37 +32,48 @@ export class Aurora {
     if (this.gameIsOver()) return;
 
     const fen = this.game.fen();
-    const simulation = new Chess(this.game.fen());
-    const moves = simulation.moves();
-    let simulations = [];
+    const simulation = new Chess();
+    let moves;
+    const levels = [];
     let bestMove;
+    const depth = $('#depth-input').val();
 
-    moves.forEach(move => {
-      simulation.load(fen);
-      simulation.move(move);
-      const evaluation = this.evaluateStaticPosition(simulation.fen());
-      const oppBestMove = this.getBestMove(simulation.fen());
-      simulation.move(oppBestMove);
-      const oppEvaluation = this.evaluateStaticPosition(simulation.fen());
-      simulations.push({
-        move,
-        evaluation,
-        bestMove: { move: oppBestMove, evaluation: oppEvaluation },
-      });
-    });
+    for (let i = 0; i < depth; i++) {
+      if (i === 0) {
+        simulation.load(fen);
+        moves = simulation.moves();
+        moves.forEach(move => {
+          levels.push({ move, depth: 1, nextLevel: [] });
+        });
+      } else {
+        // eslint-disable-next-line no-loop-func
+        levels.forEach(move => {
+          while (move.nextLevel) {
+            move = move.nextLevel;
+          }
+          simulation.load(fen);
+          simulation.move(move.move);
+          moves = simulation.moves();
+          moves.forEach(nextMove => {
+            const push = {
+              move: nextMove,
+              depth: i + 1,
+              moves: [move.move, nextMove],
+            };
+            if (i === depth - 1) {
+              simulation.move(nextMove);
+              push.evaluation = this.evaluateStaticPosition(simulation.fen());
+              simulation.undo();
+            } else {
+              push.nextLevel = [];
+            }
+            move.nextLevel.push(push);
+          });
+        });
+      }
+    }
 
-    simulations = simulations.sort(
-      (a, b) => a.bestMove.evaluation - b.bestMove.evaluation,
-    );
-
-    const maxEvaluation = simulations[0].bestMove.evaluation;
-    simulations = simulations.filter(
-      move => move.bestMove.evaluation === maxEvaluation,
-    );
-
-    console.log(simulations);
-    bestMove = simulations[Math.floor(Math.random() * simulations.length)].move;
-    this.game.move(bestMove);
+    console.log(levels);
   }
 
   getBestMove(fen) {
@@ -134,7 +145,7 @@ export class Aurora {
     });
     whitePoints += whiteMobilityPoints;
     blackPoints += blackMobilityPoints;
-    return whitePoints - blackPoints;
+    return (whitePoints - blackPoints).toFixed(5);
   }
 
   autoPlay(board) {
