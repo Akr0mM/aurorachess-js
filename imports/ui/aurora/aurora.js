@@ -7,7 +7,7 @@ export class Aurora {
     this.board = board;
     this.game = game;
     this.selfPlay = selfPlay;
-    this.autoPlaySpeed = 400;
+    this.autoPlaySpeed = 600;
     this.play = true;
     this.pieceValues = {
       p: 1, // Pion
@@ -16,14 +16,83 @@ export class Aurora {
       r: 5, // Tour
       q: 9, // Reine
     };
+
+    this.piecesEvaluation = {
+      k: 200,
+      q: 9,
+      r: 5,
+      n: 3,
+      b: 3,
+      p: 1,
+      m: 0.07,
+    };
+  }
+
+  makeMove() {
+    if (this.gameIsOver()) return;
+
+    console.log(this.evaluateStaticPosition(this.game.fen()).toFixed(2));
+    $('#evaluation').text(
+      this.evaluateStaticPosition(this.game.fen()).toFixed(2),
+    );
+
+    const moves = this.game.moves();
+    const move = moves[Math.floor(Math.random() * moves.length)];
+    this.game.move(move);
+  }
+
+  evaluateStaticPosition(fen) {
+    const evaluation = new Chess(fen);
+    const board = evaluation.board();
+    let whitePoints = 0;
+    let blackPoints = 0;
+    const evaluationCopy = new Chess(this.turn(evaluation.fen()));
+    let whiteMobilityPoints;
+    let blackMobilityPoints;
+    if (evaluation.turn() === 'w') {
+      whiteMobilityPoints = evaluation.moves().length * this.piecesEvaluation.m;
+      blackMobilityPoints =
+        evaluationCopy.moves().length * this.piecesEvaluation.m;
+    } else {
+      whiteMobilityPoints =
+        evaluationCopy.moves().length * this.piecesEvaluation.m;
+      blackMobilityPoints = evaluation.moves().length * this.piecesEvaluation.m;
+    }
+
+    board.forEach(row => {
+      row.forEach(square => {
+        if (square) {
+          if (square.color === 'w') whitePoints += this.piecesEvaluation[square.type];
+          if (square.color === 'b') blackPoints += this.piecesEvaluation[square.type];
+        }
+      });
+    });
+    whitePoints += whiteMobilityPoints;
+    blackPoints += blackMobilityPoints;
+    return whitePoints - blackPoints;
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  turn(fen) {
+    if (fen.includes(' b ')) return fen.replace(' b ', ' w ');
+    else return fen.replace(' w ', ' b ');
+  }
+
+  autoPlay(board) {
+    this.makeMove();
+    board.position(this.game.fen());
+    if (this.play) window.setTimeout(() => this.autoPlay(board), this.autoPlaySpeed);
   }
 
   // eslint-disable-next-line consistent-return
-  makeMove() {
+  gameIsOver() {
     if (this.game.isCheckmate()) {
       this.play = false;
       if (this.game.turn() === 'w') return console.log('Black won');
-      else return console.log('White won');
+      else {
+        console.log('White won');
+        return true;
+      }
     }
 
     if (
@@ -32,48 +101,8 @@ export class Aurora {
       this.game.isStalemate() ||
       this.game.isThreefoldRepetition()
     ) {
-      return console.log('Draw');
+      console.log('Draw');
+      return true;
     }
-
-    const simulation = new Chess();
-    const fen = this.game.fen();
-    const moves = this.game.moves();
-    let captureMoves = [];
-    moves.forEach(move => {
-      simulation.load(fen);
-      const moveInfo = simulation.move(move);
-      if (moveInfo.captured) {
-        const selfValue = this.pieceValues[moveInfo.piece];
-        const captureValue = this.pieceValues[moveInfo.captured];
-        const tradeValue = captureValue - selfValue;
-        if (captureMoves.length === 0) {
-          if (tradeValue >= 0) {
-            captureMoves.push({ move, tradeValue });
-          }
-        } else if (tradeValue > captureMoves[0].tradeValue) {
-          captureMoves = [{ move, tradeValue }];
-        } else if (tradeValue === captureMoves[0].tradeValue) {
-          captureMoves.push({ move, tradeValue });
-        }
-      }
-    });
-
-    let move;
-    if (captureMoves.length === 1) {
-      move = captureMoves[0].move;
-    } else if (captureMoves.length > 1) {
-      move = captureMoves[Math.floor(Math.random() * captureMoves.length)].move;
-    } else {
-      const randomMoves = this.game.moves();
-      move = randomMoves[Math.floor(Math.random() * randomMoves.length)];
-    }
-
-    this.game.move(move);
-  }
-
-  autoPlay(board) {
-    this.makeMove();
-    board.position(this.game.fen());
-    if (this.play) window.setTimeout(() => this.autoPlay(board), this.autoPlaySpeed);
   }
 }

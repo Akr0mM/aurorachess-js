@@ -10,7 +10,7 @@ import './playAi.css';
 Template.playai.onRendered(() => {
   let board = null;
   const game = new Chess();
-  const aurora = new Aurora(board, game, false);
+  const aurora = new Aurora(board, game, true);
 
   function onDragStart(source, piece, position, orientation) {}
 
@@ -63,6 +63,6 @@ Template.playai.onRendered(() => {
   };
 
   // eslint-disable-next-line no-undef
-  board = Chessboard('myBoard', config);
+  board = Chessboard('board', config);
   if (aurora.selfPlay) aurora.autoPlay(board);
 });
