@@ -31,25 +31,53 @@ export class Aurora {
   makeMove() {
     if (this.gameIsOver()) return;
 
-    console.log(this.evaluateStaticPosition(this.game.fen()).toFixed(2));
-    $('#evaluation').text(
-      this.evaluateStaticPosition(this.game.fen()).toFixed(2),
-    );
-
-    const simulation = new Chess();
-    const moves = this.game.moves();
     const fen = this.game.fen();
-    const movesEvaluation = [];
+    const simulation = new Chess(this.game.fen());
+    const moves = simulation.moves();
+    let simulations = [];
+    let bestMove;
 
     moves.forEach(move => {
       simulation.load(fen);
       simulation.move(move);
       const evaluation = this.evaluateStaticPosition(simulation.fen());
-      movesEvaluation.push({ move, evaluation });
+      const oppBestMove = this.getBestMove(simulation.fen());
+      simulation.move(oppBestMove);
+      const oppEvaluation = this.evaluateStaticPosition(simulation.fen());
+      simulations.push({
+        move,
+        evaluation,
+        bestMove: { move: oppBestMove, evaluation: oppEvaluation },
+      });
     });
 
-    console.log(movesEvaluation);
-    const evaluations = movesEvaluation.sort(
+    simulations = simulations.sort(
+      (a, b) => a.bestMove.evaluation - b.bestMove.evaluation,
+    );
+
+    const maxEvaluation = simulations[0].bestMove.evaluation;
+    simulations = simulations.filter(
+      move => move.bestMove.evaluation === maxEvaluation,
+    );
+
+    console.log(simulations);
+    bestMove = simulations[Math.floor(Math.random() * simulations.length)].move;
+    this.game.move(bestMove);
+  }
+
+  getBestMove(fen) {
+    const simulation = new Chess(fen);
+    const moves = simulation.moves();
+    const movesEvaluations = [];
+
+    moves.forEach(move => {
+      simulation.load(fen);
+      simulation.move(move);
+      const evaluation = this.evaluateStaticPosition(simulation.fen());
+      movesEvaluations.push({ move, evaluation });
+    });
+
+    const evaluations = movesEvaluations.sort(
       (a, b) => b.evaluation - a.evaluation,
     );
 
@@ -63,27 +91,17 @@ export class Aurora {
       move => move.evaluation === minEvaluation,
     );
 
-    console.log(maxEvaluations);
-    console.log(minEvaluations);
-
+    simulation.load(fen);
     let bestMove;
-    let worstMove;
-    if (this.game.turn() === 'w') {
+    if (simulation.turn() === 'w') {
       bestMove =
         maxEvaluations[Math.floor(Math.random() * maxEvaluations.length)];
-      worstMove =
-        minEvaluations[Math.floor(Math.random() * minEvaluations.length)];
     } else {
       bestMove =
         minEvaluations[Math.floor(Math.random() * minEvaluations.length)];
-      worstMove =
-        maxEvaluations[Math.floor(Math.random() * maxEvaluations.length)];
     }
 
-    console.log(bestMove);
-    console.log(worstMove);
-
-    this.game.move(bestMove.move);
+    return bestMove.move;
   }
 
   evaluateStaticPosition(fen) {
@@ -91,7 +109,9 @@ export class Aurora {
     const board = evaluation.board();
     let whitePoints = 0;
     let blackPoints = 0;
-    const evaluationCopy = new Chess(this.turn(evaluation.fen()));
+    const evaluationCopy = new Chess(fen);
+    if (evaluationCopy.turn() === 'w') evaluationCopy._turn = 'b';
+    else evaluationCopy._turn = 'w';
     let whiteMobilityPoints;
     let blackMobilityPoints;
     if (evaluation.turn() === 'w') {
@@ -115,12 +135,6 @@ export class Aurora {
     whitePoints += whiteMobilityPoints;
     blackPoints += blackMobilityPoints;
     return whitePoints - blackPoints;
-  }
-
-  // eslint-disable-next-line class-methods-use-this
-  turn(fen) {
-    if (fen.includes(' b ')) return fen.replace(' b ', ' w ');
-    else return fen.replace(' w ', ' b ');
   }
 
   autoPlay(board) {

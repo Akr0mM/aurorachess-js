@@ -35,8 +35,13 @@ Template.playai.onRendered(() => {
 
   // eslint-disable-next-line consistent-return
   function onSnapEnd() {
+    $('#evaluation').text(aurora.evaluateStaticPosition(game.fen()).toFixed(2));
+
     aurora.makeMove();
     board.position(game.fen());
+
+    $('#evaluation').text(aurora.evaluateStaticPosition(game.fen()).toFixed(2));
+
     if (game.isCheckmate()) {
       if (game.turn() === 'w') return console.log('Black won');
       else return console.log('White won');
