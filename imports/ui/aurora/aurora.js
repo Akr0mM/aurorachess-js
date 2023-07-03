@@ -36,9 +36,54 @@ export class Aurora {
       this.evaluateStaticPosition(this.game.fen()).toFixed(2),
     );
 
+    const simulation = new Chess();
     const moves = this.game.moves();
-    const move = moves[Math.floor(Math.random() * moves.length)];
-    this.game.move(move);
+    const fen = this.game.fen();
+    const movesEvaluation = [];
+
+    moves.forEach(move => {
+      simulation.load(fen);
+      simulation.move(move);
+      const evaluation = this.evaluateStaticPosition(simulation.fen());
+      movesEvaluation.push({ move, evaluation });
+    });
+
+    console.log(movesEvaluation);
+    const evaluations = movesEvaluation.sort(
+      (a, b) => b.evaluation - a.evaluation,
+    );
+
+    const maxEvaluation = evaluations[0].evaluation;
+    const maxEvaluations = evaluations.filter(
+      move => move.evaluation === maxEvaluation,
+    );
+
+    const minEvaluation = evaluations[evaluations.length - 1].evaluation;
+    const minEvaluations = evaluations.filter(
+      move => move.evaluation === minEvaluation,
+    );
+
+    console.log(maxEvaluations);
+    console.log(minEvaluations);
+
+    let bestMove;
+    let worstMove;
+    if (this.game.turn() === 'w') {
+      bestMove =
+        maxEvaluations[Math.floor(Math.random() * maxEvaluations.length)];
+      worstMove =
+        minEvaluations[Math.floor(Math.random() * minEvaluations.length)];
+    } else {
+      bestMove =
+        minEvaluations[Math.floor(Math.random() * minEvaluations.length)];
+      worstMove =
+        maxEvaluations[Math.floor(Math.random() * maxEvaluations.length)];
+    }
+
+    console.log(bestMove);
+    console.log(worstMove);
+
+    this.game.move(bestMove.move);
   }
 
   evaluateStaticPosition(fen) {

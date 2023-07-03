@@ -10,7 +10,7 @@ import './playAi.css';
 Template.playai.onRendered(() => {
   let board = null;
   const game = new Chess();
-  const aurora = new Aurora(board, game, true);
+  const aurora = new Aurora(board, game, false);
 
   function onDragStart(source, piece, position, orientation) {}
 
