@@ -1,6 +1,13 @@
 <template name="playai">
   <div>
-    Depth: <input type="number" id="depth-input" min="1" max="5" value="2" />
+    Depth:
+    <input
+      type="number"
+      id="depth-input"
+      min="1"
+      max="5"
+      onkeydown="return false"
+    />
   </div>
   <div id="board" style="width: 600px"></div>
   <div>

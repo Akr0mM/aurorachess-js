@@ -1,9 +1,13 @@
-/* eslint-disable prefer-destructuring */
 import { Chess } from 'chess.js';
 
+/* eslint-disable prefer-destructuring */
 // eslint-disable-next-line import/prefer-default-export
 export class Aurora {
-  constructor(board, game, selfPlay) {
+  constructor(board, game, color, selfPlay) {
+    this.MAX_DEPTH = 5;
+    this.DEFAULT_DEPTH = 2;
+    this.color = color;
+    this.oppColor = this.color === 'w' ? 'b' : 'w';
     this.board = board;
     this.game = game;
     this.selfPlay = selfPlay;
@@ -17,135 +21,93 @@ export class Aurora {
       q: 9, // Reine
     };
 
-    this.piecesEvaluation = {
-      k: 200,
-      q: 9,
-      r: 5,
-      n: 3,
-      b: 3,
-      p: 1,
-      m: 0.07,
+    this.piecesScore = {
+      k: 1000, // Roi
+      q: 9, // Dame
+      r: 5, // Tour
+      n: 3, // Cavalier
+      b: 3, // Four
+      p: 1, // Pion
+      m: 0.07, // Mobilité | Nombre de coups
     };
   }
 
-  makeMove() {
+  makeMove(depth) {
     if (this.gameIsOver()) return;
 
-    const fen = this.game.fen();
-    const simulation = new Chess();
-    let moves;
-    const levels = [];
-    let bestMove;
-    const depth = $('#depth-input').val();
+    const search = [];
+    const engine = new Chess(this.game.fen());
+    let levels = [];
 
     for (let i = 0; i < depth; i++) {
       if (i === 0) {
-        simulation.load(fen);
-        moves = simulation.moves();
-        moves.forEach(move => {
-          levels.push({ move, depth: 1, nextLevel: [] });
+        engine.load(this.game.fen());
+        // eslint-disable-next-line no-loop-func
+        engine.moves().forEach(move => {
+          engine.load(this.game.fen());
+          engine.move(move);
+          const push = {
+            move,
+            score: this.getScore(engine.fen(), this.color),
+            fen: engine.fen(),
+          };
+          if (depth > 1) push.moves = [];
+          search.push(push);
+          levels.push(push);
         });
       } else {
         // eslint-disable-next-line no-loop-func
-        levels.forEach(move => {
-          while (move.nextLevel) {
-            move = move.nextLevel;
-          }
-          simulation.load(fen);
-          simulation.move(move.move);
-          moves = simulation.moves();
-          moves.forEach(nextMove => {
+        const nextLevels = [];
+        levels.forEach(levelMove => {
+          engine.load(levelMove.fen);
+          engine.moves().forEach(move => {
+            engine.load(levelMove.fen);
+            engine.move(move);
             const push = {
-              move: nextMove,
-              depth: i + 1,
-              moves: [move.move, nextMove],
+              move,
+              score: this.getScore(engine.fen(), this.color),
+              fen: engine.fen(),
             };
-            if (i === depth - 1) {
-              simulation.move(nextMove);
-              push.evaluation = this.evaluateStaticPosition(simulation.fen());
-              simulation.undo();
-            } else {
-              push.nextLevel = [];
-            }
-            move.nextLevel.push(push);
+            if (i !== depth - 1) push.moves = [];
+            levelMove.moves.push(push);
+            nextLevels.push(push);
           });
         });
+        levels = nextLevels;
       }
     }
 
-    console.log(levels);
+    console.log('search :', search);
   }
 
-  getBestMove(fen) {
-    const simulation = new Chess(fen);
-    const moves = simulation.moves();
-    const movesEvaluations = [];
-
-    moves.forEach(move => {
-      simulation.load(fen);
-      simulation.move(move);
-      const evaluation = this.evaluateStaticPosition(simulation.fen());
-      movesEvaluations.push({ move, evaluation });
-    });
-
-    const evaluations = movesEvaluations.sort(
-      (a, b) => b.evaluation - a.evaluation,
-    );
-
-    const maxEvaluation = evaluations[0].evaluation;
-    const maxEvaluations = evaluations.filter(
-      move => move.evaluation === maxEvaluation,
-    );
-
-    const minEvaluation = evaluations[evaluations.length - 1].evaluation;
-    const minEvaluations = evaluations.filter(
-      move => move.evaluation === minEvaluation,
-    );
-
-    simulation.load(fen);
-    let bestMove;
-    if (simulation.turn() === 'w') {
-      bestMove =
-        maxEvaluations[Math.floor(Math.random() * maxEvaluations.length)];
-    } else {
-      bestMove =
-        minEvaluations[Math.floor(Math.random() * minEvaluations.length)];
-    }
-
-    return bestMove.move;
-  }
-
-  evaluateStaticPosition(fen) {
+  getScore(fen, color) {
     const evaluation = new Chess(fen);
+    evaluation._turn = color;
     const board = evaluation.board();
-    let whitePoints = 0;
-    let blackPoints = 0;
-    const evaluationCopy = new Chess(fen);
-    if (evaluationCopy.turn() === 'w') evaluationCopy._turn = 'b';
-    else evaluationCopy._turn = 'w';
-    let whiteMobilityPoints;
-    let blackMobilityPoints;
-    if (evaluation.turn() === 'w') {
-      whiteMobilityPoints = evaluation.moves().length * this.piecesEvaluation.m;
-      blackMobilityPoints =
-        evaluationCopy.moves().length * this.piecesEvaluation.m;
-    } else {
-      whiteMobilityPoints =
-        evaluationCopy.moves().length * this.piecesEvaluation.m;
-      blackMobilityPoints = evaluation.moves().length * this.piecesEvaluation.m;
-    }
+    let score = 0;
+    let oppScore = 0;
 
+    // score by pieces
     board.forEach(row => {
       row.forEach(square => {
-        if (square) {
-          if (square.color === 'w') whitePoints += this.piecesEvaluation[square.type];
-          if (square.color === 'b') blackPoints += this.piecesEvaluation[square.type];
+        if (square && square.color === color) {
+          score += this.piecesScore[square.type];
+        } else if (square) {
+          oppScore += this.piecesScore[square.type];
         }
       });
     });
-    whitePoints += whiteMobilityPoints;
-    blackPoints += blackMobilityPoints;
-    return (whitePoints - blackPoints).toFixed(5);
+
+    // score by mobility | number of moves
+    const oppEvaluation = new Chess(fen);
+    oppEvaluation._turn = color === 'w' ? 'b' : 'w';
+
+    score += evaluation.moves().length * this.piecesScore.m;
+    oppScore += oppEvaluation.moves().length * this.piecesScore.m;
+
+    score -= oppScore;
+    score = score.toFixed(3);
+    return `${score} for ${color}`;
   }
 
   autoPlay(board) {

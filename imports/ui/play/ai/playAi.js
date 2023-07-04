@@ -10,7 +10,9 @@ import './playAi.css';
 Template.playai.onRendered(() => {
   let board = null;
   const game = new Chess();
-  const aurora = new Aurora(board, game, false);
+  const aurora = new Aurora(board, game, 'b', false);
+  $('#depth-input').attr('max', aurora.MAX_DEPTH);
+  $('#depth-input').val(aurora.DEFAULT_DEPTH);
 
   function onDragStart(source, piece, position, orientation) {}
 
@@ -28,12 +30,13 @@ Template.playai.onRendered(() => {
 
   // eslint-disable-next-line consistent-return
   function onSnapEnd() {
-    $('#evaluation').text(aurora.evaluateStaticPosition(game.fen()));
+    // $('#evaluation').text(aurora.evaluatePosition(game.fen()));
 
-    aurora.makeMove();
+    const depthInput = $('#depth-input').val();
+    aurora.makeMove(depthInput);
     board.position(game.fen());
 
-    $('#evaluation').text(aurora.evaluateStaticPosition(game.fen()));
+    // $('#evaluation').text(aurora.evaluatePosition(game.fen()));
 
     if (game.isCheckmate()) {
       if (game.turn() === 'w') return console.log('Black won');
