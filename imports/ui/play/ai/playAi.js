@@ -29,12 +29,11 @@ Template.playai.onRendered(() => {
   }
 
   // eslint-disable-next-line consistent-return
-  function onSnapEnd() {
+  async function onSnapEnd() {
     // $('#evaluation').text(aurora.evaluatePosition(game.fen()));
 
     const depthInput = $('#depth-input').val();
-    aurora.makeMove(depthInput);
-    board.position(game.fen());
+    await aurora.playMoves(aurora.searchMoves(depthInput), 50, board); // tu peux gerer la speed des coups ici (50ms)
 
     // $('#evaluation').text(aurora.evaluatePosition(game.fen()));
 
@@ -58,6 +57,7 @@ Template.playai.onRendered(() => {
     draggable: true,
     position: 'start',
     promotion: 'q',
+    moveSpeed: 10,
     onDragStart,
     onDrop,
     onSnapEnd,

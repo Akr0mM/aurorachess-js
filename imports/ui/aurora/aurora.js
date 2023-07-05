@@ -5,7 +5,7 @@ import { Chess } from 'chess.js';
 export class Aurora {
   constructor(board, game, color, selfPlay) {
     this.MAX_DEPTH = 5;
-    this.DEFAULT_DEPTH = 2;
+    this.DEFAULT_DEPTH = 3;
     this.color = color;
     this.oppColor = this.color === 'w' ? 'b' : 'w';
     this.board = board;
@@ -34,7 +34,9 @@ export class Aurora {
 
   makeMove(depth) {
     if (this.gameIsOver()) return;
+  }
 
+  searchMoves(depth) {
     const search = [];
     const engine = new Chess(this.game.fen());
     let levels = [];
@@ -77,7 +79,44 @@ export class Aurora {
       }
     }
 
-    console.log('search :', search);
+    // console.log('search :', search);
+    return search;
+  }
+
+  async playMoves(moves, speed, board) {
+    const engine = this.game;
+    const fen = this.game.fen();
+
+    const wait = () => new Promise(resolve => {
+      setTimeout(resolve, speed);
+    });
+
+    async function makeMove(move) {
+      engine.move(move);
+      board.position(engine.fen());
+      await wait();
+    }
+
+    for (const move1 of moves) {
+      engine.load(fen);
+      await makeMove(move1.move);
+
+      if (move1.moves) {
+        for (const move2 of move1.moves) {
+          engine.load(move1.fen);
+          await makeMove(move2.move);
+          board.position(engine.fen());
+
+          if (move2.moves) {
+            for (const move3 of move2.moves) {
+              engine.load(move2.fen);
+              await makeMove(move3.move);
+              board.position(engine.fen());
+            }
+          }
+        }
+      }
+    }
   }
 
   getScore(fen, color) {
