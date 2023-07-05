@@ -83,9 +83,10 @@ export class Aurora {
     return search;
   }
 
-  async playMoves(moves, speed, board) {
+  async playMoves(moves, speed, board, depth) {
     const engine = this.game;
     const fen = this.game.fen();
+    let foundedPositions = 0;
 
     const wait = () => new Promise(resolve => {
       setTimeout(resolve, speed);
@@ -112,11 +113,15 @@ export class Aurora {
               engine.load(move2.fen);
               await makeMove(move3.move);
               board.position(engine.fen());
+              if (depth == 3) foundedPositions += 1;
             }
           }
+          if (depth == 2) foundedPositions += 1;
         }
       }
+      if (depth == 1) foundedPositions += 1;
     }
+    console.log(`founded positions: ${foundedPositions}`);
   }
 
   getScore(fen, color) {
