@@ -1,30 +1,45 @@
+/* eslint-disable no-undef */
 /* eslint-disable prefer-arrow-callback */
-import Chess from 'chess.js';
+import { Chess } from 'chess.js';
 import { assert } from 'chai';
+import { Aurora } from '../imports/ui/aurora/aurora';
 
-describe('Chess Moves Test', function () {
-  it('should test all moves at depth 2', function () {
-    const chess = new Chess();
-    const movesTested = [];
+describe('Aurora Search : Start Position', function () {
+  const game = new Chess();
+  const aurora = new Aurora(null, game, 'w', false);
 
-    function testAllMovesAtDepth(board, depth) {
-      if (depth === 0) {
-        // Ajoutez les assertions ou les opérations souhaitées ici
-        movesTested.push(board.fen());
-        return;
-      }
+  it('Depth : 1 ply : 20 positions', function () {
+    const depth = 1;
 
-      const moves = board.moves();
-      moves.forEach(move => {
-        board.move(move);
-        testAllMovesAtDepth(board, depth - 1);
-        board.undo();
-      });
-    }
-
-    testAllMovesAtDepth(chess, 2);
-
-    // Vérifiez que tous les coups possibles ont été testés
-    assert.strictEqual(movesTested.length, chess.moves().length);
+    const moves = aurora.searchMoves(depth).length;
+    assert.strictEqual(moves, 20);
   });
+
+  it('Depth : 2 ply : 400 positions', function () {
+    const depth = 2;
+
+    const moves = aurora.searchMoves(depth).length;
+    assert.strictEqual(moves, 400);
+  });
+
+  it('Depth : 3 ply : 8902 positions', function () {
+    const depth = 3;
+
+    const moves = aurora.searchMoves(depth).length;
+    assert.strictEqual(moves, 8902);
+  });
+
+  // it('Depth : 4 ply : 197281 positions', function () {
+  //   const depth = 4;
+
+  //   const moves = aurora.searchMoves(depth).length;
+  //   assert.strictEqual(moves, 197281);
+  // });
+
+  // it('Depth : 5 ply : 4865609 positions', function () {
+  //   const depth = 5;
+
+  //   const moves = aurora.searchMoves(depth).length;
+  //   assert.strictEqual(moves, 4865609);
+  // });
 });

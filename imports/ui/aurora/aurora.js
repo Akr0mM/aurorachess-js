@@ -5,7 +5,7 @@ import { Chess } from 'chess.js';
 export class Aurora {
   constructor(board, game, color, selfPlay) {
     this.MAX_DEPTH = 5;
-    this.DEFAULT_DEPTH = 3;
+    this.DEFAULT_DEPTH = 2;
     this.color = color;
     this.oppColor = this.color === 'w' ? 'b' : 'w';
     this.board = board;
@@ -34,6 +34,7 @@ export class Aurora {
 
   makeMove(depth) {
     if (this.gameIsOver()) return;
+    console.log(this.searchMoves(depth));
   }
 
   searchMoves(depth) {
@@ -79,35 +80,10 @@ export class Aurora {
       }
     }
 
-    // console.log('search :', search);
-    return search;
-  }
-
-  playMoves(moves, depth, board) {
-    const engine = this.game;
-    const fen = this.game.fen();
-    let foundedPositions = 0;
-
-    for (const move1 of moves) {
-      engine.load(fen);
-      engine.move(move1.move);
-      if (move1.moves) {
-        for (const move2 of move1.moves) {
-          engine.load(move1.fen);
-          engine.move(move2.move);
-          if (move2.moves) {
-            for (const move3 of move2.moves) {
-              engine.load(move2.fen);
-              engine.move(move3.move);
-              if (depth === 3) foundedPositions += 1;
-            }
-          }
-          if (depth === 2) foundedPositions += 1;
-        }
-      }
-      if (depth === 1) foundedPositions += 1;
-    }
-    console.log(`founded positions: ${foundedPositions}`);
+    return {
+      search,
+      length: levels.length,
+    };
   }
 
   getScore(fen, color) {
