@@ -7,7 +7,7 @@ import { Aurora } from '../../aurora/aurora';
 import './playAi.html';
 import './playAi.css';
 
-Template.playai.onRendered(async () => {
+Template.playai.onRendered(() => {
   let board = null;
   const game = new Chess();
   const aurora = new Aurora(board, game, 'b', false);
@@ -29,16 +29,11 @@ Template.playai.onRendered(async () => {
   }
 
   // eslint-disable-next-line consistent-return
-  async function onSnapEnd() {
+  function onSnapEnd() {
     // $('#evaluation').text(aurora.evaluatePosition(game.fen()));
 
-    const depthInput = $('#depth-input').val();
-    await aurora.playMoves(
-      aurora.searchMoves(depthInput),
-      50,
-      board,
-      depthInput,
-    ); // tu peux gerer la speed des coups ici (50ms)
+    const depthInput = parseInt($('#depth-input').val(), 10);
+    aurora.playMoves(aurora.searchMoves(depthInput), 50, board, depthInput); // tu peux gerer la speed des coups ici (50ms)
 
     // $('#evaluation').text(aurora.evaluatePosition(game.fen()));
 
@@ -62,7 +57,6 @@ Template.playai.onRendered(async () => {
     draggable: true,
     position: 'start',
     promotion: 'q',
-    moveSpeed: 1,
     onDragStart,
     onDrop,
     onSnapEnd,
@@ -71,10 +65,9 @@ Template.playai.onRendered(async () => {
   // eslint-disable-next-line no-undef
   board = Chessboard('board', config);
   if (aurora.selfPlay) aurora.autoPlay(board);
-  await aurora.playMoves(
+  aurora.playMoves(
     aurora.searchMoves($('#depth-input').val()),
-    2,
+    parseInt($('#depth-input').val(), 10),
     board,
-    $('#depth-input').val(),
   );
 });

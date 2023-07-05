@@ -83,43 +83,29 @@ export class Aurora {
     return search;
   }
 
-  async playMoves(moves, speed, board, depth) {
+  playMoves(moves, depth, board) {
     const engine = this.game;
     const fen = this.game.fen();
     let foundedPositions = 0;
 
-    const wait = () => new Promise(resolve => {
-      setTimeout(resolve, speed);
-    });
-
-    async function makeMove(move) {
-      engine.move(move);
-      board.position(engine.fen());
-      await wait();
-    }
-
     for (const move1 of moves) {
       engine.load(fen);
-      await makeMove(move1.move);
-
+      engine.move(move1.move);
       if (move1.moves) {
         for (const move2 of move1.moves) {
           engine.load(move1.fen);
-          await makeMove(move2.move);
-          board.position(engine.fen());
-
+          engine.move(move2.move);
           if (move2.moves) {
             for (const move3 of move2.moves) {
               engine.load(move2.fen);
-              await makeMove(move3.move);
-              board.position(engine.fen());
-              if (depth == 3) foundedPositions += 1;
+              engine.move(move3.move);
+              if (depth === 3) foundedPositions += 1;
             }
           }
-          if (depth == 2) foundedPositions += 1;
+          if (depth === 2) foundedPositions += 1;
         }
       }
-      if (depth == 1) foundedPositions += 1;
+      if (depth === 1) foundedPositions += 1;
     }
     console.log(`founded positions: ${foundedPositions}`);
   }
