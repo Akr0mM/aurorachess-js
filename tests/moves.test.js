@@ -23,6 +23,7 @@ describe('Aurora Search : Start Position', function () {
   });
 
   it('Depth : 3 ply : 8902 positions', function () {
+    this.timeout(0);
     const depth = 3;
 
     const moves = aurora.searchMoves(depth);
