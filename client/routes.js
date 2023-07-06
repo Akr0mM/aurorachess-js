@@ -26,10 +26,10 @@ FlowRouter.route('/home', {
   },
 });
 
-FlowRouter.route('/play/ai', {
-  name: 'playai',
+FlowRouter.route('/:play', {
+  name: 'play',
   action() {
-    BlazeLayout.render('layout', { mainTemplate: 'playai' });
+    BlazeLayout.render('layout', { mainTemplate: 'play' });
   },
 });
 
