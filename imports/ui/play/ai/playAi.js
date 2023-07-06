@@ -34,7 +34,6 @@ Template.playai.onRendered(() => {
 
     const depthInput = parseInt($('#depth-input').val(), 10);
     aurora.makeMove(depthInput);
-    board.position(game.fen());
 
     // $('#evaluation').text(aurora.evaluatePosition(game.fen()));
 
@@ -66,5 +65,4 @@ Template.playai.onRendered(() => {
   // eslint-disable-next-line no-undef
   board = Chessboard('board', config);
   if (aurora.selfPlay) aurora.autoPlay(board);
-  aurora.makeMove(parseInt($('#depth-input').val(), 10));
 });
