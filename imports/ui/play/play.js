@@ -63,6 +63,7 @@ Template.play.onRendered(() => {
 
   // eslint-disable-next-line consistent-return
   function onSnapEnd() {
+    if (aurora.updateBoardOnSnapEnd) board.position(aurora.getFEN());
     // $('#evaluation').text(aurora.evaluatePosition(game.fen()));
     // const depthInput = parseInt($('#depth-input').val(), 10);
     // aurora.makeMove(depthInput);

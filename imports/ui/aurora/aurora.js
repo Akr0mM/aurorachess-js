@@ -9,6 +9,7 @@ export class Aurora {
     this.pieces = [];
     this.turn = 'w';
     this.numSquaresToEdge = [];
+    this.updateBoardOnSnapEnd = false;
 
     console.clear();
     this.initPosition();
@@ -170,6 +171,7 @@ export class Aurora {
   }
 
   playMove(move) {
+    this.updateBoardOnSnapEnd = false;
     const fromSquare = move.split(' ')[0];
     const toSquare = parseInt(move.split(' ')[2], 10);
     const promotion = move.split(' ')[3];
@@ -182,6 +184,7 @@ export class Aurora {
     if (promotion) {
       this.pieces[toSquare].type = promotion;
       this.pieces[toSquare].piece = this.pieces[toSquare].piece[0] + promotion;
+      this.updateBoardOnSnapEnd = true;
     }
 
     // if en passant remove pawn
