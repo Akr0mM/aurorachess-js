@@ -148,11 +148,9 @@ export class Aurora {
           this.numSquaresToEdge[pos][knightMoves[i][1][1]] >= 1
         ) {
           const targetSquare = this.pieces[pos + knightMoves[i][0]];
-          if (targetSquare && targetSquare.color === this.turn) {
-            break;
-          } else if (targetSquare && targetSquare.color !== this.turn) {
+          if (targetSquare && targetSquare.color !== this.turn) {
             moves.push(`${pos} x ${targetSquare.pos}`);
-          } else {
+          } else if (!targetSquare) {
             moves.push(`${pos} - ${pos + knightMoves[i][0]}`);
           }
         }
@@ -163,11 +161,9 @@ export class Aurora {
         // if has space required to move
         if (this.numSquaresToEdge[pos][i]) {
           const targetSquare = this.pieces[target];
-          if (targetSquare && targetSquare.color === this.turn) {
-            break;
-          } else if (targetSquare && targetSquare.color !== this.turn) {
+          if (targetSquare && targetSquare.color !== this.turn) {
             moves.push(`${pos} x ${targetSquare.pos}`);
-          } else {
+          } else if (!targetSquare) {
             moves.push(`${pos} - ${target}`);
           }
         }
@@ -224,18 +220,13 @@ export class Aurora {
     }
 
     // if en passant remove pawn
+    const enPassantCapture = this.turn === 'w' ? -8 : 8;
     if (this.pieces[toSquare].type === 'p') {
       if (
-        this.pieces[toSquare - 8] &&
-        this.pieces[toSquare - 8].enPassant === true
+        this.pieces[toSquare + enPassantCapture] &&
+        this.pieces[toSquare + enPassantCapture].enPassant === true
       ) {
-        this.pieces[toSquare - 8] = null;
-        this.board.position(this.getFEN());
-      } else if (
-        this.pieces[toSquare + 8] &&
-        this.pieces[toSquare + 8].enPassant === true
-      ) {
-        this.pieces[toSquare + 8] = null;
+        this.pieces[toSquare + enPassantCapture] = null;
         this.board.position(this.getFEN());
       }
     }
