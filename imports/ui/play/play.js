@@ -1,27 +1,64 @@
+/* eslint-disable no-alert */
 import { Template } from 'meteor/templating';
 import { Aurora } from '../aurora/aurora';
 
 import './play.html';
 import './play.css';
 
+const fen = '8/pppppppp/8/8/8/8/PPPPPPPP/8 w - - 0 1';
+
+let shiftKey = false;
+
+$(document).on('keydown keyup', event => {
+  if (event.shiftKey) {
+    shiftKey = true;
+  } else {
+    shiftKey = false;
+  }
+});
+
 Template.play.onRendered(() => {
   let board = null;
-  const aurora = new Aurora();
+  let aurora = null;
   // const game = new Chess();
   // const aurora = new Aurora(board, game, 'b', false);
   // $('#depth-input').attr('max', aurora.MAX_DEPTH);
   // $('#depth-input').val(aurora.DEFAULT_DEPTH);
 
-  function onDragStart(source, piece, position, orientation) {
+  function onDragStart() {
     // console.log(source, piece, position, orientation);
   }
 
   // eslint-disable-next-line consistent-return
-  function onDrop(source, target) {
-    const move = aurora.isMove(source, target);
+  function onDrop(source, target, piece) {
+    let promotion = 'q';
 
-    if (move) aurora.playMove(move);
-    else return 'snapback';
+    if (
+      shiftKey &&
+      piece[1] === 'P' &&
+      (parseInt(target[1], 10) === 1 || parseInt(target[1], 10) === 8)
+    ) {
+      console.log(piece[1], target[1]);
+      promotion = '';
+      while (
+        promotion !== 'q' &&
+        promotion !== 'n' &&
+        promotion !== 'r' &&
+        promotion !== 'b'
+      ) {
+        promotion = prompt(
+          'Promotion: Queen (q), Knight (n), Rook (r), Bishop (b)',
+        );
+      }
+      shiftKey = false;
+    }
+
+    const move = aurora.isMove(source, target, promotion);
+
+    if (move) {
+      aurora.playMove(move);
+      if (move.split(' ')[3]) board.position(aurora.getFEN());
+    } else return 'snapback';
   }
 
   // eslint-disable-next-line consistent-return
@@ -44,17 +81,22 @@ Template.play.onRendered(() => {
     // }
   }
 
-  const config = {
-    pieceTheme: '/chesspieces/wikipedia/{piece}.png',
+  const boardConfig = {
+    pieceTheme: '/chesspieces/neo/{piece}.png',
     draggable: true,
-    position: 'start',
-    promotion: 'q',
+    position: fen,
     onDragStart,
     onDrop,
     onSnapEnd,
   };
 
-  // eslint-disable-next-line no-undef
-  board = Chessboard('board', config);
-  // if (aurora.selfPlay) aurora.autoPlay(board);
+  // eslint-disable-next-line new-cap, no-undef
+  board = Chessboard('board', boardConfig);
+
+  const config = {
+    fen,
+    board,
+  };
+
+  aurora = new Aurora(config);
 });

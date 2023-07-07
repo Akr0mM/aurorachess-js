@@ -1,9 +1,10 @@
 /* eslint-disable class-methods-use-this */
 // eslint-disable-next-line import/prefer-default-export
 export class Aurora {
-  constructor(fen) {
+  constructor(config) {
     this.fen =
-      fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      config.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    this.board = config.board;
     this.directionOffsets = [8, -8, -1, 1, 7, -7, 9, -9];
     this.pieces = [];
     this.turn = 'w';
@@ -15,6 +16,7 @@ export class Aurora {
     this.initPosition();
     this.precomputedMoveData();
     this.getMoves(1);
+    this.getFEN();
   }
 
   initPosition() {
@@ -52,18 +54,15 @@ export class Aurora {
   }
 
   getMoves(depthOfMoves, pieceToMove) {
-    let moves = [];
+    const moves = [];
 
     if (pieceToMove) {
-      if (pieceToMove.type === 'p') moves = this.getPawnsMoves(pieceToMove);
-      else if (pieceToMove.type === 'n') moves = this.getKnightMoves(pieceToMove);
-      else if (pieceToMove.type === 'r') moves = this.getRookMoves(pieceToMove);
-      else if (pieceToMove.type === 'k') moves = this.getKingMoves(pieceToMove);
+      console.log(pieceToMove);
     } else {
       this.pieces.forEach(piece => {
         if (piece && piece.color === this.turn) {
           if (this.isSlidingPiece(piece.type)) {
-            // moves.push(...this.generateSlidingMoves(piece.pos, piece.type));
+            moves.push(...this.generateSlidingMoves(piece.pos, piece.type));
           } else {
             moves.push(
               ...this.generateMoves(piece.type, piece.pos, piece.pawnAdvance),
@@ -83,10 +82,15 @@ export class Aurora {
     if (type === 'p') {
       // move
       const directionIndex = this.turn === 'w' ? 0 : 1;
-      let targetPiece =
-        this.pieces[pos + this.directionOffsets[directionIndex]];
+      const upSquare = pos + this.directionOffsets[directionIndex];
+      let targetPiece = this.pieces[upSquare];
       if (!targetPiece) {
-        moves.push(`${pos} - ${pos + this.directionOffsets[directionIndex]}`);
+        if ((upSquare >= 56 && upSquare <= 63) || upSquare <= 7) {
+          moves.push(`${pos} - ${upSquare} q`);
+          moves.push(`${pos} - ${upSquare} n`);
+          moves.push(`${pos} - ${upSquare} r`);
+          moves.push(`${pos} - ${upSquare} b`);
+        } else moves.push(`${pos} - ${upSquare}`);
         if (pawnAdvance) {
           targetPiece =
             this.pieces[pos + 2 * this.directionOffsets[directionIndex]];
@@ -99,15 +103,24 @@ export class Aurora {
       }
 
       // capture
-      const directionIndexes = this.turn === 'w' ? [7, 9] : [-7, -9];
+      const directionIndexes = this.turn === 'w' ? [4, 6] : [5, 7];
       for (let index = 0; index < 2; index++) {
-        const capturedPiece = this.pieces[pos + directionIndexes[index]];
-        if (capturedPiece && capturedPiece.color !== this.turn) {
-          moves.push(`${pos} - ${pos + directionIndexes[index]}`);
+        if (this.numSquaresToEdge[pos][directionIndexes[index]] > 0) {
+          const capturedPiece =
+            this.pieces[pos + this.directionOffsets[directionIndexes[index]]];
+          if (capturedPiece && capturedPiece.color !== this.turn) {
+            moves.push(
+              `${pos} - ${
+                pos + this.directionOffsets[directionIndexes[index]]
+              }`,
+            );
+          }
         }
       }
     } else if (type === 'n') {
+      console.log(type, pos);
     } else {
+      console.log(type, pos);
     }
 
     return moves;
@@ -143,27 +156,47 @@ export class Aurora {
     return moves;
   }
 
-  playMove(move, promotion) {
-    promotion = promotion || 'q';
+  playMove(move) {
     const fromSquare = move.split(' ')[0];
     const toSquare = parseInt(move.split(' ')[2], 10);
+    const promotion = move.split(' ')[3];
 
-    this.pieces[fromSquare].pos = toSquare;
-    if (this.pieces[fromSquare].pawnAdvance) this.pieces[fromSquare].pawnAdvance = false;
     this.pieces[toSquare] = this.pieces[fromSquare];
+    this.pieces[toSquare].pos = toSquare;
+    if (this.pieces[fromSquare].pawnAdvance) this.pieces[toSquare].pawnAdvance = false;
     this.pieces[fromSquare] = null;
+    if (promotion) {
+      this.pieces[toSquare].type = promotion;
+      this.pieces[toSquare].piece = this.pieces[toSquare].piece[0] + promotion;
+    }
 
     this.switchTurn();
     this.showAscii();
   }
 
-  isMove(from, to) {
+  isMove(from, to, promotion) {
     const fromSquare = this.toSquare(from);
     const toSquare = this.toSquare(to);
     const moves = this.getMoves();
 
-    const move = `${fromSquare} - ${toSquare}`;
-    return moves.includes(move) ? move : false;
+    let moveToPlay;
+
+    for (let i = 0; i < moves.length; i++) {
+      const move = moves[i].split(' ');
+      if (parseInt(move[0], 10) === fromSquare && parseInt(move[2], 10) === toSquare) {
+        if (move[3]) {
+          if (move[3] === promotion) {
+            moveToPlay = moves[i];
+            break;
+          }
+        } else {
+          moveToPlay = moves[i];
+          break;
+        }
+      }
+    }
+
+    return moveToPlay;
   }
 
   toSquare(coor) {
@@ -217,6 +250,41 @@ export class Aurora {
   switchTurn() {
     this.turn = this.turn === 'w' ? 'b' : 'w';
     return this.turn;
+  }
+
+  getFEN() {
+    let empty = 0;
+    let fen = '';
+
+    for (let i = 0; i < 64; i++) {
+      const rank = 7 - Math.floor(i / 8);
+      const file = i % 8;
+      const index = 8 * rank + file;
+
+      if (this.pieces[index]) {
+        if (empty > 0) {
+          fen += empty;
+          empty = 0;
+        }
+        const { color, type } = this.pieces[index];
+
+        fen += color === 'w' ? type.toUpperCase() : type.toLowerCase();
+      } else {
+        empty++;
+      }
+
+      if ((index + 1) % 8 !== (index % 8) + 1) {
+        if (empty > 0) {
+          fen += empty;
+          empty = 0;
+        }
+        if (index !== 7) {
+          fen += '/';
+        }
+      }
+    }
+    fen += ` ${this.turn} `;
+    return fen;
   }
 
   precomputedMoveData() {
