@@ -13,8 +13,12 @@ body {
   background-color: #c0474b !important;
 }
 
-.highlight-moves-capture {
-  box-shadow: inset 0 0 10px 10px rgba(0, 0, 0, 0.25);
+.highlight-moves-source-white {
+  background-color: #f5af4e !important;
+}
+
+.highlight-moves-source-black {
+  background-color: #d09644 !important;
 }
 
 /* board border */
@@ -36,9 +40,9 @@ body {
   user-select: none;
 }
 
-.highlight1-32417,
-.highlight2-9c5d2 {
-  box-shadow: inset 0 0 2px 2px white;
+.highlight2-9c5d2,
+.highlight1-32417 {
+  box-shadow: none;
 }
 
 /* BOARD THEMES */

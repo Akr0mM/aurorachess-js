@@ -8,6 +8,7 @@ export class Aurora {
     this.directionOffsets = [8, -8, -1, 1, 7, -7, 9, -9];
     this.pieces = [];
     this.turn = 'w';
+    this.castles = ['K', 'Q', 'k', 'q'];
     this.numSquaresToEdge = [];
     this.updateBoardOnSnapEnd = false;
 
@@ -304,6 +305,7 @@ export class Aurora {
     };
 
     const moves = this.getMoves(1, piece);
+    moves.push(`- - ${pos}`);
     moves.forEach(move => {
       const square = this.toBoard(move.split(' ')[2]);
       const $square = $('.board-b72b1')
@@ -311,16 +313,17 @@ export class Aurora {
         .eq(square.rank)
         .children()
         .eq(square.file);
+
       if ($square.hasClass('white-1e1d7')) {
-        $square.addClass('highlight-moves-white');
+        if (moves.indexOf(move) === moves.length - 1) {
+          $square.addClass('highlight-moves-source-white');
+        } else {
+          $square.addClass('highlight-moves-white');
+        }
+      } else if (moves.indexOf(move) === moves.length - 1) {
+        $square.addClass('highlight-moves-source-black');
       } else {
         $square.addClass('highlight-moves-black');
-      }
-      if (
-        $square.children().length &&
-        $square.children().last().hasClass('piece-417db')
-      ) {
-        $square.addClass('highlight-moves-capture');
       }
     });
   }

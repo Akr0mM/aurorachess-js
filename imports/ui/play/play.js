@@ -33,7 +33,12 @@ Template.play.onRendered(() => {
   function onDrop(source, target, piece) {
     $('.highlight-moves-white').removeClass('highlight-moves-white');
     $('.highlight-moves-black').removeClass('highlight-moves-black');
-    $('.highlight-moves-capture').removeClass('highlight-moves-capture');
+    $('.highlight-moves-source-white').removeClass(
+      'highlight-moves-source-white',
+    );
+    $('.highlight-moves-source-black').removeClass(
+      'highlight-moves-source-black',
+    );
 
     let promotion = 'q';
 
