@@ -8,8 +8,6 @@ export class Aurora {
     this.directionOffsets = [8, -8, -1, 1, 7, -7, 9, -9];
     this.pieces = [];
     this.turn = 'w';
-    this.whitePieces = [];
-    this.blackPieces = [];
     this.numSquaresToEdge = [];
 
     console.clear();
@@ -36,18 +34,22 @@ export class Aurora {
       } else {
         const pieceColor = /[A-Z]/.test(char) ? 'w' : 'b';
         const pieceType = char.toLowerCase();
-        this.pieces[rank * 8 + file] = {
+        const pos = rank * 8 + file;
+        this.pieces[pos] = {
           piece: `${pieceColor}${pieceType}`,
           color: pieceColor,
           type: pieceType,
-          pos: rank * 8 + file,
+          pos,
         };
+
+        if (pieceType === 'p') this.pieces[pos].enPassant = false;
+
         if (
           pieceType === 'p' &&
           ((pieceColor === 'w' && rank === 1) ||
             (pieceColor === 'b' && rank === 6))
-        ) this.pieces[rank * 8 + file].pawnAdvance = true;
-        else this.pieces[rank * 8 + file].pawnAdvance = false;
+        ) this.pieces[pos].pawnAdvance = true;
+        else this.pieces[pos].pawnAdvance = false;
         file++;
       }
     });
@@ -110,10 +112,22 @@ export class Aurora {
             this.pieces[pos + this.directionOffsets[directionIndexes[index]]];
           if (capturedPiece && capturedPiece.color !== this.turn) {
             moves.push(
-              `${pos} - ${
+              `${pos} x ${
                 pos + this.directionOffsets[directionIndexes[index]]
               }`,
             );
+          }
+        }
+      }
+
+      // en passant
+      const enPassantIndexes = [2, 3];
+      const enPassantCaptures = this.turn === 'w' ? [7, 9] : [-9, -7];
+      for (let i = 0; i < 2; i++) {
+        const square = pos + this.directionOffsets[enPassantIndexes[i]];
+        if (this.numSquaresToEdge[pos][enPassantIndexes[i]] > 0) {
+          if (this.pieces[square] && this.pieces[square].enPassant) {
+            moves.push(`${pos} x ${pos + enPassantCaptures[i]}`);
           }
         }
       }
@@ -143,12 +157,11 @@ export class Aurora {
 
         if (targetPiece && targetPiece.color === this.turn) {
           break;
-        }
-
-        moves.push(`${square} - ${targetSquare}`);
-
-        if (targetPiece && targetPiece.color !== this.turn) {
+        } else if (targetPiece && targetPiece.color !== this.turn) {
+          moves.push(`${square} x ${targetSquare}`);
           break;
+        } else {
+          moves.push(`${square} - ${targetSquare}`);
         }
       }
     }
@@ -161,6 +174,7 @@ export class Aurora {
     const toSquare = parseInt(move.split(' ')[2], 10);
     const promotion = move.split(' ')[3];
 
+    // move
     this.pieces[toSquare] = this.pieces[fromSquare];
     this.pieces[toSquare].pos = toSquare;
     if (this.pieces[fromSquare].pawnAdvance) this.pieces[toSquare].pawnAdvance = false;
@@ -170,8 +184,40 @@ export class Aurora {
       this.pieces[toSquare].piece = this.pieces[toSquare].piece[0] + promotion;
     }
 
+    // if en passant remove pawn
+    if (this.pieces[toSquare].type === 'p') {
+      if (
+        this.pieces[toSquare - 8] &&
+        this.pieces[toSquare - 8].enPassant === true
+      ) {
+        this.pieces[toSquare - 8] = null;
+        this.board.position(this.getFEN());
+      } else if (
+        this.pieces[toSquare + 8] &&
+        this.pieces[toSquare + 8].enPassant === true
+      ) {
+        this.pieces[toSquare + 8] = null;
+        this.board.position(this.getFEN());
+      }
+    }
+
+    // turn off en passant on all panws
+    this.noEnPassant();
+
+    // enable en passant if moves forward 2 squares
+    if (
+      this.pieces[toSquare].type === 'p' &&
+      (toSquare - fromSquare === 16 || toSquare - fromSquare === -16)
+    ) this.pieces[toSquare].enPassant = true;
+
     this.switchTurn();
     this.showAscii();
+  }
+
+  noEnPassant() {
+    this.pieces.forEach(piece => {
+      if (piece && piece.type === 'p') piece.enPassant = false;
+    });
   }
 
   isMove(from, to, promotion) {
@@ -183,7 +229,10 @@ export class Aurora {
 
     for (let i = 0; i < moves.length; i++) {
       const move = moves[i].split(' ');
-      if (parseInt(move[0], 10) === fromSquare && parseInt(move[2], 10) === toSquare) {
+      if (
+        parseInt(move[0], 10) === fromSquare &&
+        parseInt(move[2], 10) === toSquare
+      ) {
         if (move[3]) {
           if (move[3] === promotion) {
             moveToPlay = moves[i];

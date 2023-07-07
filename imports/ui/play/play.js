@@ -85,6 +85,7 @@ Template.play.onRendered(() => {
     pieceTheme: '/chesspieces/neo/{piece}.png',
     draggable: true,
     position: fen,
+    moveSpeed: 0,
     onDragStart,
     onDrop,
     onSnapEnd,
