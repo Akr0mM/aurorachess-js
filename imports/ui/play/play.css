@@ -5,6 +5,18 @@ body {
   height: 100vh;
 }
 
+.highlight-moves-white {
+  background-color: #db4d51 !important;
+}
+
+.highlight-moves-black {
+  background-color: #c0474b !important;
+}
+
+.highlight-moves-capture {
+  box-shadow: inset 0 0 10px 10px rgba(0, 0, 0, 0.25);
+}
+
 /* board border */
 .board-b72b1 {
   border: 2px solid black;

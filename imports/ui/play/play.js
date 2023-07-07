@@ -25,12 +25,16 @@ Template.play.onRendered(() => {
   // $('#depth-input').attr('max', aurora.MAX_DEPTH);
   // $('#depth-input').val(aurora.DEFAULT_DEPTH);
 
-  function onDragStart() {
-    // console.log(source, piece, position, orientation);
+  function onDragStart(source, piece) {
+    aurora.highlightMoves(source, piece);
   }
 
   // eslint-disable-next-line consistent-return
   function onDrop(source, target, piece) {
+    $('.highlight-moves-white').removeClass('highlight-moves-white');
+    $('.highlight-moves-black').removeClass('highlight-moves-black');
+    $('.highlight-moves-capture').removeClass('highlight-moves-capture');
+
     let promotion = 'q';
 
     if (

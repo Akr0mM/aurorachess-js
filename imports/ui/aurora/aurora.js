@@ -60,7 +60,21 @@ export class Aurora {
     const moves = [];
 
     if (pieceToMove) {
-      console.log(pieceToMove);
+      if (pieceToMove.color === this.turn) {
+        if (this.isSlidingPiece(pieceToMove.type)) {
+          moves.push(
+            ...this.generateSlidingMoves(pieceToMove.pos, pieceToMove.type),
+          );
+        } else {
+          moves.push(
+            ...this.generateMoves(
+              pieceToMove.type,
+              pieceToMove.pos,
+              pieceToMove.pawnAdvance,
+            ),
+          );
+        }
+      }
     } else {
       this.pieces.forEach(piece => {
         if (piece && piece.color === this.turn) {
@@ -278,6 +292,39 @@ export class Aurora {
     return moveToPlay;
   }
 
+  highlightMoves(from, piece) {
+    const pos = this.toSquare(from);
+    const { pawnAdvance } = this.pieces[pos];
+
+    piece = {
+      type: piece[1].toLowerCase(),
+      color: piece[0],
+      pos,
+      pawnAdvance,
+    };
+
+    const moves = this.getMoves(1, piece);
+    moves.forEach(move => {
+      const square = this.toBoard(move.split(' ')[2]);
+      const $square = $('.board-b72b1')
+        .children()
+        .eq(square.rank)
+        .children()
+        .eq(square.file);
+      if ($square.hasClass('white-1e1d7')) {
+        $square.addClass('highlight-moves-white');
+      } else {
+        $square.addClass('highlight-moves-black');
+      }
+      if (
+        $square.children().length &&
+        $square.children().last().hasClass('piece-417db')
+      ) {
+        $square.addClass('highlight-moves-capture');
+      }
+    });
+  }
+
   toSquare(coor) {
     const fileCoordinates = {
       a: 0,
@@ -324,6 +371,13 @@ export class Aurora {
     }
 
     console.table(ranks);
+  }
+
+  toBoard(square) {
+    return {
+      rank: 7 - Math.floor(square / 8),
+      file: square % 8,
+    };
   }
 
   switchTurn() {
