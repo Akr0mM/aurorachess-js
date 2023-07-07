@@ -112,11 +112,7 @@ export class Aurora {
           const capturedPiece =
             this.pieces[pos + this.directionOffsets[directionIndexes[index]]];
           if (capturedPiece && capturedPiece.color !== this.turn) {
-            moves.push(
-              `${pos} x ${
-                pos + this.directionOffsets[directionIndexes[index]]
-              }`,
-            );
+            moves.push(`${pos} x ${capturedPiece.pos}`);
           }
         }
       }
@@ -133,7 +129,34 @@ export class Aurora {
         }
       }
     } else if (type === 'n') {
-      console.log(type, pos);
+      // all 8 knight moves
+      const knightMoves = [
+        [15, [0, 2]],
+        [17, [0, 3]],
+        [10, [3, 0]],
+        [-6, [3, 1]],
+        [-15, [1, 3]],
+        [-17, [1, 2]],
+        [-10, [2, 1]],
+        [6, [2, 0]],
+      ];
+
+      for (let i = 0; i < 8; i++) {
+        if (
+          // has space required to move
+          this.numSquaresToEdge[pos][knightMoves[i][1][0]] >= 2 &&
+          this.numSquaresToEdge[pos][knightMoves[i][1][1]] >= 1
+        ) {
+          const targetSquare = this.pieces[pos + knightMoves[i][0]];
+          if (targetSquare && targetSquare.color === this.turn) {
+            break;
+          } else if (targetSquare && targetSquare.color !== this.turn) {
+            moves.push(`${pos} x ${targetSquare.pos}`);
+          } else {
+            moves.push(`${pos} - ${pos + knightMoves[i][0]}`);
+          }
+        }
+      }
     } else {
       console.log(type, pos);
     }
