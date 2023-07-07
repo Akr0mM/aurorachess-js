@@ -158,7 +158,20 @@ export class Aurora {
         }
       }
     } else {
-      console.log(type, pos);
+      for (let i = 0; i < 8; i++) {
+        const target = pos + this.directionOffsets[i];
+        // if has space required to move
+        if (this.numSquaresToEdge[pos][i]) {
+          const targetSquare = this.pieces[target];
+          if (targetSquare && targetSquare.color === this.turn) {
+            break;
+          } else if (targetSquare && targetSquare.color !== this.turn) {
+            moves.push(`${pos} x ${targetSquare.pos}`);
+          } else {
+            moves.push(`${pos} - ${target}`);
+          }
+        }
+      }
     }
 
     return moves;
