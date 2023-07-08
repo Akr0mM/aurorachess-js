@@ -90,7 +90,6 @@ export class Aurora {
       });
     }
 
-    console.log(moves);
     return moves;
   }
 
@@ -126,7 +125,17 @@ export class Aurora {
         if (this.numSquaresToEdge[pos][directionIndexes[index]] > 0) {
           const capturedPiece =
             this.pieces[pos + this.directionOffsets[directionIndexes[index]]];
-          if (capturedPiece && capturedPiece.color !== this.turn) {
+          if (
+            capturedPiece &&
+            capturedPiece.color !== this.turn &&
+            ((capturedPiece.pos >= 56 && capturedPiece.pos <= 63) ||
+              capturedPiece.pos <= 7)
+          ) {
+            moves.push(`${pos} x ${capturedPiece.pos} q`);
+            moves.push(`${pos} x ${capturedPiece.pos} n`);
+            moves.push(`${pos} x ${capturedPiece.pos} r`);
+            moves.push(`${pos} x ${capturedPiece.pos} b`);
+          } else if (capturedPiece && capturedPiece.color !== this.turn) {
             moves.push(`${pos} x ${capturedPiece.pos}`);
           }
         }
@@ -222,6 +231,7 @@ export class Aurora {
     const fromSquare = move.split(' ')[0];
     const toSquare = parseInt(move.split(' ')[2], 10);
     const promotion = move.split(' ')[3];
+    console.log(promotion, move);
 
     // move
     this.pieces[toSquare] = this.pieces[fromSquare];
@@ -229,6 +239,7 @@ export class Aurora {
     if (this.pieces[fromSquare].pawnAdvance) this.pieces[toSquare].pawnAdvance = false;
     this.pieces[fromSquare] = null;
     if (promotion) {
+      console.log(promotion);
       this.pieces[toSquare].type = promotion;
       this.pieces[toSquare].piece = this.pieces[toSquare].piece[0] + promotion;
       this.updateBoardOnSnapEnd = true;
@@ -242,7 +253,7 @@ export class Aurora {
         this.pieces[toSquare + enPassantCapture].enPassant === true
       ) {
         this.pieces[toSquare + enPassantCapture] = null;
-        this.board.position(this.getFEN());
+        this.updateBoardOnSnapEnd = true;
       }
     }
 
