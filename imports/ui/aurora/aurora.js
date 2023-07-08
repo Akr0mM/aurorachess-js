@@ -7,25 +7,27 @@ export class Aurora {
     this.board = config.board;
     this.directionOffsets = [8, -8, -1, 1, 7, -7, 9, -9];
     this.pieces = [];
-    this.turn = 'w';
-    this.castles = ['K', 'Q', 'k', 'q'];
+    this.castles = ['-'];
     this.numSquaresToEdge = [];
     this.updateBoardOnSnapEnd = false;
 
     console.clear();
     this.initPosition();
     this.precomputedMoveData();
-    this.getMoves(1);
+    console.log(this.getMoves(1, this.pieces[4]));
     this.getFEN();
   }
 
   initPosition() {
     const fenSplit = this.fen.split(' ');
     const fenBoard = fenSplit[0].split('');
+    const turn = fenSplit[1];
+    const castlingRights = fenSplit[2].split('');
 
     let rank = 7;
     let file = 0;
 
+    // pieces position fen[0]
     fenBoard.forEach(char => {
       if (char === '/') {
         rank--;
@@ -51,10 +53,27 @@ export class Aurora {
           ((pieceColor === 'w' && rank === 1) ||
             (pieceColor === 'b' && rank === 6))
         ) this.pieces[pos].pawnAdvance = true;
-        else this.pieces[pos].pawnAdvance = false;
+        else if (pieceType === 'p') this.pieces[pos].pawnAdvance = false;
+
+        if (pieceType === 'r') {
+          if (pos === 0 || pos === 56) {
+            this.pieces[pos].side = 'q';
+          } else if (pos === 7 || pos === 63) {
+            this.pieces[pos].side = 'k';
+          }
+        }
+
         file++;
       }
     });
+
+    // turn to play fen[1]
+    this.turn = turn;
+
+    // casting rigths fen[2]
+    if (castlingRights[0] !== '-') {
+      this.castles = castlingRights;
+    }
   }
 
   getMoves(depthOfMoves, pieceToMove) {
@@ -180,6 +199,7 @@ export class Aurora {
         }
       }
     } else {
+      // king moves
       for (let i = 0; i < 8; i++) {
         const target = pos + this.directionOffsets[i];
         // if has space required to move
@@ -190,6 +210,28 @@ export class Aurora {
           } else if (!targetSquare) {
             moves.push(`${pos} - ${target}`);
           }
+        }
+      }
+
+      // castles
+      const castleMoves = this.turn === 'w' ? ['K', 'Q'] : ['k', 'q'];
+      if (this.castles.includes(castleMoves[0])) {
+        // king side castle
+        // check no pieces betweeen then add the move
+        for (let i = 1; i <= 2; i++) {
+          const targetSquare = this.pieces[pos + i];
+          if (targetSquare) break;
+          if (i === 2) moves.push(`${pos} 0 ${pos + i}`);
+        }
+      }
+
+      if (this.castles.includes(castleMoves[1])) {
+        // queen side castle
+        // check no pieces betweeen then add the move
+        for (let i = 1; i <= 3; i++) {
+          const targetSquare = this.pieces[pos - i];
+          if (targetSquare) break;
+          if (i === 3) moves.push(`${pos} 00 ${pos - i + 1}`);
         }
       }
     }
@@ -231,7 +273,19 @@ export class Aurora {
     const fromSquare = move.split(' ')[0];
     const toSquare = parseInt(move.split(' ')[2], 10);
     const promotion = move.split(' ')[3];
-    console.log(promotion, move);
+
+    // check if capture is rook to remove castling right on this side
+    if (this.pieces[toSquare] && this.pieces[toSquare].type === 'r') {
+      const { side } = this.pieces[toSquare];
+      if (this.turn === 'w') {
+        // if rook move remove castle from rook side
+        const sideIndex = this.castles.indexOf(side);
+        if (sideIndex > -1) this.castles.splice(sideIndex, 1);
+      } else {
+        const sideIndex = this.castles.indexOf(side.toUpperCase());
+        if (sideIndex > -1) this.castles.splice(sideIndex, 1);
+      }
+    }
 
     // move
     this.pieces[toSquare] = this.pieces[fromSquare];
@@ -239,10 +293,23 @@ export class Aurora {
     if (this.pieces[fromSquare].pawnAdvance) this.pieces[toSquare].pawnAdvance = false;
     this.pieces[fromSquare] = null;
     if (promotion) {
-      console.log(promotion);
       this.pieces[toSquare].type = promotion;
       this.pieces[toSquare].piece = this.pieces[toSquare].piece[0] + promotion;
       this.updateBoardOnSnapEnd = true;
+    }
+
+    // castle
+    if (move.split(' ')[1] === '0' || move.split(' ')[1] === '00') this.playCastle(move, toSquare);
+
+    // remove castling right if king / rook moves
+    if (
+      this.pieces[toSquare].type === 'k' ||
+      this.pieces[toSquare].type === 'r'
+    ) {
+      this.removeCastlingRights(
+        this.pieces[toSquare].type,
+        this.pieces[toSquare].side,
+      );
     }
 
     // if en passant remove pawn
@@ -268,6 +335,58 @@ export class Aurora {
 
     this.switchTurn();
     this.showAscii();
+  }
+
+  removeCastlingRights(type, side) {
+    if (type === 'k') {
+      // if king move remove both side castle
+      if (this.turn === 'w') {
+        const kingIndex = this.castles.indexOf('K');
+        if (kingIndex > -1) this.castles.splice(kingIndex, 1);
+        const queenIndex = this.castles.indexOf('Q');
+        if (queenIndex > -1) this.castles.splice(queenIndex, 1);
+      } else {
+        const kingIndex = this.castles.indexOf('k');
+        if (kingIndex > -1) this.castles.splice(kingIndex, 1);
+        const queenIndex = this.castles.indexOf('q');
+        if (queenIndex > -1) this.castles.splice(queenIndex, 1);
+      }
+    } else if (this.turn === 'w') {
+      // if rook move remove castle from rook side
+      const sideIndex = this.castles.indexOf(side.toUpperCase());
+      if (sideIndex > -1) this.castles.splice(sideIndex, 1);
+    } else {
+      const sideIndex = this.castles.indexOf(side);
+      if (sideIndex > -1) this.castles.splice(sideIndex, 1);
+    }
+
+    console.log(this.castles);
+  }
+
+  playCastle(move, toSquare) {
+    const char = move.split(' ')[1];
+    const rook =
+      char.toLowerCase() === '0' ?
+        [this.pieces[toSquare + 1], toSquare - 1] :
+        [this.pieces[toSquare - 2], toSquare + 1];
+
+    this.pieces[rook[1]] = rook[0];
+    this.pieces[rook[0].pos] = null;
+    rook[0].pos = rook[1];
+
+    if (this.turn === 'w') {
+      const kingIndex = this.castles.indexOf('K');
+      if (kingIndex > -1) this.castles.splice(kingIndex, 1);
+      const queenIndex = this.castles.indexOf('Q');
+      if (queenIndex > -1) this.castles.splice(queenIndex, 1);
+    } else {
+      const kingIndex = this.castles.indexOf('k');
+      if (kingIndex > -1) this.castles.splice(kingIndex, 1);
+      const queenIndex = this.castles.indexOf('q');
+      if (queenIndex > -1) this.castles.splice(queenIndex, 1);
+    }
+
+    this.updateBoardOnSnapEnd = true;
   }
 
   noEnPassant() {
@@ -430,6 +549,7 @@ export class Aurora {
         }
       }
     }
+
     fen += ` ${this.turn} `;
     return fen;
   }
