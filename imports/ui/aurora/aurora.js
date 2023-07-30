@@ -2,579 +2,84 @@
 // eslint-disable-next-line import/prefer-default-export
 export class Aurora {
   constructor(config) {
-    this.fen =
-      config.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    this.fen = config.fen;
     this.board = config.board;
-    this.directionOffsets = [8, -8, -1, 1, 7, -7, 9, -9];
-    this.pieces = [];
-    this.castles = ['-'];
-    this.numSquaresToEdge = [];
-    this.updateBoardOnSnapEnd = false;
 
-    console.clear();
-    this.initPosition();
-    this.precomputedMoveData();
-    console.log(this.getMoves(1, this.pieces[4]));
-    this.getFEN();
+    this.load(this.fen);
+    console.log('bitboards', this.bitboards);
+    console.log('turn', this.turn);
   }
 
-  initPosition() {
-    const fenSplit = this.fen.split(' ');
-    const fenBoard = fenSplit[0].split('');
-    const turn = fenSplit[1];
-    const castlingRights = fenSplit[2].split('');
+  load(fen) {
+    // reset variables
+    const bb = {
+      wp: '',
+      wr: '',
+      wn: '',
+      wb: '',
+      wk: '',
+      wq: '',
+      bp: '',
+      br: '',
+      bb: '',
+      bn: '',
+      bq: '',
+      bk: '',
+    };
+    this.side = 0;
+    this.castle = 0;
 
-    let rank = 7;
-    let file = 0;
-
-    // pieces position fen[0]
-    fenBoard.forEach(char => {
-      if (char === '/') {
-        rank--;
-        file = 0;
-        // eslint-disable-next-line no-restricted-globals
-      } else if (!isNaN(char)) {
-        file += parseInt(char, 10);
-      } else {
-        const pieceColor = /[A-Z]/.test(char) ? 'w' : 'b';
-        const pieceType = char.toLowerCase();
-        const pos = rank * 8 + file;
-        this.pieces[pos] = {
-          piece: `${pieceColor}${pieceType}`,
-          color: pieceColor,
-          type: pieceType,
-          pos,
-        };
-
-        if (pieceType === 'p') this.pieces[pos].enPassant = false;
-
-        if (
-          pieceType === 'p' &&
-          ((pieceColor === 'w' && rank === 1) ||
-            (pieceColor === 'b' && rank === 6))
-        ) this.pieces[pos].pawnAdvance = true;
-        else if (pieceType === 'p') this.pieces[pos].pawnAdvance = false;
-
-        if (pieceType === 'r') {
-          if (pos === 0 || pos === 56) {
-            this.pieces[pos].side = 'q';
-          } else if (pos === 7 || pos === 63) {
-            this.pieces[pos].side = 'k';
-          }
-        }
-
-        file++;
-      }
-    });
-
-    // turn to play fen[1]
-    this.turn = turn;
-
-    // casting rigths fen[2]
-    if (castlingRights[0] !== '-') {
-      this.castles = castlingRights;
-    }
-  }
-
-  getMoves(depthOfMoves, pieceToMove) {
-    const moves = [];
-
-    if (pieceToMove) {
-      if (pieceToMove.color === this.turn) {
-        if (this.isSlidingPiece(pieceToMove.type)) {
-          moves.push(
-            ...this.generateSlidingMoves(pieceToMove.pos, pieceToMove.type),
-          );
-        } else {
-          moves.push(
-            ...this.generateMoves(
-              pieceToMove.type,
-              pieceToMove.pos,
-              pieceToMove.pawnAdvance,
-            ),
-          );
-        }
-      }
-    } else {
-      this.pieces.forEach(piece => {
-        if (piece && piece.color === this.turn) {
-          if (this.isSlidingPiece(piece.type)) {
-            moves.push(...this.generateSlidingMoves(piece.pos, piece.type));
-          } else {
-            moves.push(
-              ...this.generateMoves(piece.type, piece.pos, piece.pawnAdvance),
-            );
-          }
+    const push0 = char => {
+      Object.keys(bb).forEach(key => {
+        if (key !== char) {
+          bb[key] += '0';
         }
       });
-    }
-
-    return moves;
-  }
-
-  generateMoves(type, pos, pawnAdvance) {
-    const moves = [];
-
-    if (type === 'p') {
-      // move
-      const directionIndex = this.turn === 'w' ? 0 : 1;
-      const upSquare = pos + this.directionOffsets[directionIndex];
-      let targetPiece = this.pieces[upSquare];
-      if (!targetPiece) {
-        if ((upSquare >= 56 && upSquare <= 63) || upSquare <= 7) {
-          moves.push(`${pos} - ${upSquare} q`);
-          moves.push(`${pos} - ${upSquare} n`);
-          moves.push(`${pos} - ${upSquare} r`);
-          moves.push(`${pos} - ${upSquare} b`);
-        } else moves.push(`${pos} - ${upSquare}`);
-        if (pawnAdvance) {
-          targetPiece =
-            this.pieces[pos + 2 * this.directionOffsets[directionIndex]];
-          if (!targetPiece) {
-            moves.push(
-              `${pos} - ${pos + 2 * this.directionOffsets[directionIndex]}`,
-            );
-          }
-        }
-      }
-
-      // capture
-      const directionIndexes = this.turn === 'w' ? [4, 6] : [5, 7];
-      for (let index = 0; index < 2; index++) {
-        if (this.numSquaresToEdge[pos][directionIndexes[index]] > 0) {
-          const capturedPiece =
-            this.pieces[pos + this.directionOffsets[directionIndexes[index]]];
-          if (
-            capturedPiece &&
-            capturedPiece.color !== this.turn &&
-            ((capturedPiece.pos >= 56 && capturedPiece.pos <= 63) ||
-              capturedPiece.pos <= 7)
-          ) {
-            moves.push(`${pos} x ${capturedPiece.pos} q`);
-            moves.push(`${pos} x ${capturedPiece.pos} n`);
-            moves.push(`${pos} x ${capturedPiece.pos} r`);
-            moves.push(`${pos} x ${capturedPiece.pos} b`);
-          } else if (capturedPiece && capturedPiece.color !== this.turn) {
-            moves.push(`${pos} x ${capturedPiece.pos}`);
-          }
-        }
-      }
-
-      // en passant
-      const enPassantIndexes = [2, 3];
-      const enPassantCaptures = this.turn === 'w' ? [7, 9] : [-9, -7];
-      for (let i = 0; i < 2; i++) {
-        const square = pos + this.directionOffsets[enPassantIndexes[i]];
-        if (this.numSquaresToEdge[pos][enPassantIndexes[i]] > 0) {
-          if (this.pieces[square] && this.pieces[square].enPassant) {
-            moves.push(`${pos} x ${pos + enPassantCaptures[i]}`);
-          }
-        }
-      }
-    } else if (type === 'n') {
-      // all 8 knight moves
-      const knightMoves = [
-        [15, [0, 2]],
-        [17, [0, 3]],
-        [10, [3, 0]],
-        [-6, [3, 1]],
-        [-15, [1, 3]],
-        [-17, [1, 2]],
-        [-10, [2, 1]],
-        [6, [2, 0]],
-      ];
-
-      for (let i = 0; i < 8; i++) {
-        if (
-          // has space required to move
-          this.numSquaresToEdge[pos][knightMoves[i][1][0]] >= 2 &&
-          this.numSquaresToEdge[pos][knightMoves[i][1][1]] >= 1
-        ) {
-          const targetSquare = this.pieces[pos + knightMoves[i][0]];
-          if (targetSquare && targetSquare.color !== this.turn) {
-            moves.push(`${pos} x ${targetSquare.pos}`);
-          } else if (!targetSquare) {
-            moves.push(`${pos} - ${pos + knightMoves[i][0]}`);
-          }
-        }
-      }
-    } else {
-      // king moves
-      for (let i = 0; i < 8; i++) {
-        const target = pos + this.directionOffsets[i];
-        // if has space required to move
-        if (this.numSquaresToEdge[pos][i]) {
-          const targetSquare = this.pieces[target];
-          if (targetSquare && targetSquare.color !== this.turn) {
-            moves.push(`${pos} x ${targetSquare.pos}`);
-          } else if (!targetSquare) {
-            moves.push(`${pos} - ${target}`);
-          }
-        }
-      }
-
-      // castles
-      const castleMoves = this.turn === 'w' ? ['K', 'Q'] : ['k', 'q'];
-      if (this.castles.includes(castleMoves[0])) {
-        // king side castle
-        // check no pieces betweeen then add the move
-        for (let i = 1; i <= 2; i++) {
-          const targetSquare = this.pieces[pos + i];
-          if (targetSquare) break;
-          if (i === 2) moves.push(`${pos} 0 ${pos + i}`);
-        }
-      }
-
-      if (this.castles.includes(castleMoves[1])) {
-        // queen side castle
-        // check no pieces betweeen then add the move
-        for (let i = 1; i <= 3; i++) {
-          const targetSquare = this.pieces[pos - i];
-          if (targetSquare) break;
-          if (i === 3) moves.push(`${pos} 00 ${pos - i + 1}`);
-        }
-      }
-    }
-
-    return moves;
-  }
-
-  generateSlidingMoves(square, piece) {
-    const moves = [];
-    const startDirIndex = piece === 'b' ? 4 : 0;
-    const endDirIndex = piece === 'r' ? 4 : 8;
-
-    for (
-      let directionIndex = startDirIndex;
-      directionIndex < endDirIndex;
-      directionIndex++
-    ) {
-      for (let n = 0; n < this.numSquaresToEdge[square][directionIndex]; n++) {
-        const targetSquare =
-          square + this.directionOffsets[directionIndex] * (n + 1);
-        const targetPiece = this.pieces[targetSquare];
-
-        if (targetPiece && targetPiece.color === this.turn) {
-          break;
-        } else if (targetPiece && targetPiece.color !== this.turn) {
-          moves.push(`${square} x ${targetSquare}`);
-          break;
-        } else {
-          moves.push(`${square} - ${targetSquare}`);
-        }
-      }
-    }
-
-    return moves;
-  }
-
-  playMove(move) {
-    this.updateBoardOnSnapEnd = false;
-    const fromSquare = move.split(' ')[0];
-    const toSquare = parseInt(move.split(' ')[2], 10);
-    const promotion = move.split(' ')[3];
-
-    // check if capture is rook to remove castling right on this side
-    if (this.pieces[toSquare] && this.pieces[toSquare].type === 'r') {
-      const { side } = this.pieces[toSquare];
-      if (this.turn === 'w') {
-        // if rook move remove castle from rook side
-        const sideIndex = this.castles.indexOf(side);
-        if (sideIndex > -1) this.castles.splice(sideIndex, 1);
-      } else {
-        const sideIndex = this.castles.indexOf(side.toUpperCase());
-        if (sideIndex > -1) this.castles.splice(sideIndex, 1);
-      }
-    }
-
-    // move
-    this.pieces[toSquare] = this.pieces[fromSquare];
-    this.pieces[toSquare].pos = toSquare;
-    if (this.pieces[fromSquare].pawnAdvance) this.pieces[toSquare].pawnAdvance = false;
-    this.pieces[fromSquare] = null;
-    if (promotion) {
-      this.pieces[toSquare].type = promotion;
-      this.pieces[toSquare].piece = this.pieces[toSquare].piece[0] + promotion;
-      this.updateBoardOnSnapEnd = true;
-    }
-
-    // castle
-    if (move.split(' ')[1] === '0' || move.split(' ')[1] === '00') this.playCastle(move, toSquare);
-
-    // remove castling right if king / rook moves
-    if (
-      this.pieces[toSquare].type === 'k' ||
-      this.pieces[toSquare].type === 'r'
-    ) {
-      this.removeCastlingRights(
-        this.pieces[toSquare].type,
-        this.pieces[toSquare].side,
-      );
-    }
-
-    // if en passant remove pawn
-    const enPassantCapture = this.turn === 'w' ? -8 : 8;
-    if (this.pieces[toSquare].type === 'p') {
-      if (
-        this.pieces[toSquare + enPassantCapture] &&
-        this.pieces[toSquare + enPassantCapture].enPassant === true
-      ) {
-        this.pieces[toSquare + enPassantCapture] = null;
-        this.updateBoardOnSnapEnd = true;
-      }
-    }
-
-    // turn off en passant on all panws
-    this.noEnPassant();
-
-    // enable en passant if moves forward 2 squares
-    if (
-      this.pieces[toSquare].type === 'p' &&
-      (toSquare - fromSquare === 16 || toSquare - fromSquare === -16)
-    ) this.pieces[toSquare].enPassant = true;
-
-    this.switchTurn();
-    this.showAscii();
-  }
-
-  removeCastlingRights(type, side) {
-    if (type === 'k') {
-      // if king move remove both side castle
-      if (this.turn === 'w') {
-        const kingIndex = this.castles.indexOf('K');
-        if (kingIndex > -1) this.castles.splice(kingIndex, 1);
-        const queenIndex = this.castles.indexOf('Q');
-        if (queenIndex > -1) this.castles.splice(queenIndex, 1);
-      } else {
-        const kingIndex = this.castles.indexOf('k');
-        if (kingIndex > -1) this.castles.splice(kingIndex, 1);
-        const queenIndex = this.castles.indexOf('q');
-        if (queenIndex > -1) this.castles.splice(queenIndex, 1);
-      }
-    } else if (this.turn === 'w') {
-      // if rook move remove castle from rook side
-      const sideIndex = this.castles.indexOf(side.toUpperCase());
-      if (sideIndex > -1) this.castles.splice(sideIndex, 1);
-    } else {
-      const sideIndex = this.castles.indexOf(side);
-      if (sideIndex > -1) this.castles.splice(sideIndex, 1);
-    }
-
-    console.log(this.castles);
-  }
-
-  playCastle(move, toSquare) {
-    const char = move.split(' ')[1];
-    const rook =
-      char.toLowerCase() === '0' ?
-        [this.pieces[toSquare + 1], toSquare - 1] :
-        [this.pieces[toSquare - 2], toSquare + 1];
-
-    this.pieces[rook[1]] = rook[0];
-    this.pieces[rook[0].pos] = null;
-    rook[0].pos = rook[1];
-
-    if (this.turn === 'w') {
-      const kingIndex = this.castles.indexOf('K');
-      if (kingIndex > -1) this.castles.splice(kingIndex, 1);
-      const queenIndex = this.castles.indexOf('Q');
-      if (queenIndex > -1) this.castles.splice(queenIndex, 1);
-    } else {
-      const kingIndex = this.castles.indexOf('k');
-      if (kingIndex > -1) this.castles.splice(kingIndex, 1);
-      const queenIndex = this.castles.indexOf('q');
-      if (queenIndex > -1) this.castles.splice(queenIndex, 1);
-    }
-
-    this.updateBoardOnSnapEnd = true;
-  }
-
-  noEnPassant() {
-    this.pieces.forEach(piece => {
-      if (piece && piece.type === 'p') piece.enPassant = false;
-    });
-  }
-
-  isMove(from, to, promotion) {
-    const fromSquare = this.toSquare(from);
-    const toSquare = this.toSquare(to);
-    const moves = this.getMoves();
-
-    let moveToPlay;
-
-    for (let i = 0; i < moves.length; i++) {
-      const move = moves[i].split(' ');
-      if (
-        parseInt(move[0], 10) === fromSquare &&
-        parseInt(move[2], 10) === toSquare
-      ) {
-        if (move[3]) {
-          if (move[3] === promotion) {
-            moveToPlay = moves[i];
-            break;
-          }
-        } else {
-          moveToPlay = moves[i];
-          break;
-        }
-      }
-    }
-
-    return moveToPlay;
-  }
-
-  highlightMoves(from, piece) {
-    const pos = this.toSquare(from);
-    const { pawnAdvance } = this.pieces[pos];
-
-    piece = {
-      type: piece[1].toLowerCase(),
-      color: piece[0],
-      pos,
-      pawnAdvance,
     };
 
-    const moves = this.getMoves(1, piece);
-    moves.push(`- - ${pos}`);
-    moves.forEach(move => {
-      const square = this.toBoard(move.split(' ')[2]);
-      const $square = $('.board-b72b1')
-        .children()
-        .eq(square.rank)
-        .children()
-        .eq(square.file);
+    const bitboards = {
+      P: 'wp',
+      R: 'wr',
+      B: 'wb',
+      N: 'wn',
+      Q: 'wq',
+      K: 'wk',
+      p: 'bp',
+      r: 'br',
+      n: 'bn',
+      b: 'bb',
+      q: 'bq',
+      k: 'bk',
+    };
 
-      if ($square.hasClass('white-1e1d7')) {
-        if (moves.indexOf(move) === moves.length - 1) {
-          $square.addClass('highlight-moves-source-white');
+    const fenSplit = fen.split(' ');
+    const fenBoard = fenSplit[0];
+    this.turn = fenSplit[1] === 'w' ? 1 : 0;
+
+    fenBoard.split('').forEach(char => {
+      if (char !== '/') {
+        if (Number(char)) {
+          for (let i = 0; i < Number(char); i++) {
+            bb.wp += '0';
+            bb.wr += '0';
+            bb.wn += '0';
+            bb.wb += '0';
+            bb.wk += '0';
+            bb.wq += '0';
+            bb.bb += '0';
+            bb.bp += '0';
+            bb.bn += '0';
+            bb.br += '0';
+            bb.bq += '0';
+            bb.bk += '0';
+          }
         } else {
-          $square.addClass('highlight-moves-white');
+          bb[bitboards[char]] += '1';
+          push0(bitboards[char]);
         }
-      } else if (moves.indexOf(move) === moves.length - 1) {
-        $square.addClass('highlight-moves-source-black');
-      } else {
-        $square.addClass('highlight-moves-black');
       }
     });
-  }
 
-  toSquare(coor) {
-    const fileCoordinates = {
-      a: 0,
-      b: 1,
-      c: 2,
-      d: 3,
-      e: 4,
-      f: 5,
-      g: 6,
-      h: 7,
-    };
-
-    const file = fileCoordinates[coor.split('')[0]];
-    const rank = (coor.split('')[1] - 1) * 8;
-
-    return rank + file;
-  }
-
-  isSlidingPiece(pieceType) {
-    return pieceType === 'q' || pieceType === 'b' || pieceType === 'r';
-  }
-
-  showAscii() {
-    const ranks = [[], [], [], [], [], [], [], []];
-
-    for (let rankIndex = 0; rankIndex < 8; rankIndex++) {
-      for (let fileIndex = 0; fileIndex < 8; fileIndex++) {
-        ranks[rankIndex].push('--');
-      }
-    }
-
-    for (let i = 0; i < this.pieces.length; i++) {
-      if (this.pieces[i]) {
-        const pieceRank =
-          this.turn === 'w' ?
-            7 - Math.floor(this.pieces[i].pos / 8) :
-            Math.floor(this.pieces[i].pos / 8);
-        const pieceFile =
-          this.turn === 'w' ?
-            this.pieces[i].pos % 8 :
-            7 - (this.pieces[i].pos % 8);
-        ranks[pieceRank][pieceFile] = this.pieces[i].piece;
-      }
-    }
-
-    console.table(ranks);
-  }
-
-  toBoard(square) {
-    return {
-      rank: 7 - Math.floor(square / 8),
-      file: square % 8,
-    };
-  }
-
-  switchTurn() {
-    this.turn = this.turn === 'w' ? 'b' : 'w';
-    return this.turn;
-  }
-
-  getFEN() {
-    let empty = 0;
-    let fen = '';
-
-    for (let i = 0; i < 64; i++) {
-      const rank = 7 - Math.floor(i / 8);
-      const file = i % 8;
-      const index = 8 * rank + file;
-
-      if (this.pieces[index]) {
-        if (empty > 0) {
-          fen += empty;
-          empty = 0;
-        }
-        const { color, type } = this.pieces[index];
-
-        fen += color === 'w' ? type.toUpperCase() : type.toLowerCase();
-      } else {
-        empty++;
-      }
-
-      if ((index + 1) % 8 !== (index % 8) + 1) {
-        if (empty > 0) {
-          fen += empty;
-          empty = 0;
-        }
-        if (index !== 7) {
-          fen += '/';
-        }
-      }
-    }
-
-    fen += ` ${this.turn} `;
-    return fen;
-  }
-
-  precomputedMoveData() {
-    for (let file = 0; file < 8; file++) {
-      for (let rank = 0; rank < 8; rank++) {
-        const up = 7 - rank;
-        const down = rank;
-        const left = file;
-        const right = 7 - file;
-
-        const squareIndex = rank * 8 + file;
-
-        this.numSquaresToEdge[squareIndex] = [
-          up,
-          down,
-          left,
-          right,
-          Math.min(up, left),
-          Math.min(down, right),
-          Math.min(up, right),
-          Math.min(down, left),
-        ];
-      }
-    }
+    this.bitboards = bb;
   }
 }
