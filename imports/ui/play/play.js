@@ -5,7 +5,8 @@ import { Aurora } from '../aurora/aurora';
 import './play.html';
 import './play.css';
 
-const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const fen =
+  'rnbqk2r/ppp1pp1p/5n2/3p1b2/4P3/2NP1N2/PPP1QPPP/R1B1KB1R w KQkq - 0 1';
 
 let shiftKey = false;
 

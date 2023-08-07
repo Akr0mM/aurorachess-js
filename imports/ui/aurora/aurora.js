@@ -6,8 +6,7 @@ export class Aurora {
     this.board = config.board;
 
     this.load(this.fen);
-    console.log('bitboards', this.bitboards);
-    console.log('turn', this.turn);
+    this.ascii(this.bitboards.wp, 'white pawn');
   }
 
   load(fen) {
@@ -80,6 +79,33 @@ export class Aurora {
       }
     });
 
+    Object.keys(bb).forEach(key => {
+      bb[key] = parseInt(bb[key], 2);
+    });
+
     this.bitboards = bb;
+
+    console.log('bitboards string', this.bitboards);
+    console.log('bitboards type', typeof this.bitboards.wp);
+    console.log('turn', this.turn);
+  }
+
+  ascii(bitboard, text) {
+    const board = [[], [], [], [], [], [], [], []];
+
+    for (let row = 0; row < 8; row++) {
+      for (let file = 0; file < 8; file++) {
+        board[row][file] = 0;
+      }
+    }
+
+    for (let i = 0; i < 64; i++) {
+      if (BigInt(bitboard) & (1n << BigInt(63 - i))) {
+        board[Math.floor(i / 8)][i % 8] = 'X';
+      }
+    }
+
+    console.log(`${text} : \x1b[3m(table)\x1b[0m`);
+    console.table(board);
   }
 }
