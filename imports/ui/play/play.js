@@ -5,20 +5,22 @@ import { Aurora } from '../aurora/aurora';
 import './play.html';
 import './play.css';
 
-const fen =
-  'rnbqk2r/ppp1pp1p/5n2/3p1b2/4P3/2NP1N2/PPP1QPPP/R1B1KB1R w KQkq - 0 1';
+// const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const fen = '8/8/pp3R1p/8/p2R1p1p/8/4Rp2/8 w - - 0 1';
 
-let shiftKey = false;
+// let shiftKey = false;
 
-$(document).on('keydown keyup', event => {
-  if (event.shiftKey) {
-    shiftKey = true;
-  } else {
-    shiftKey = false;
-  }
-});
+// $(document).on('keydown keyup', event => {
+//   if (event.shiftKey) {
+//     shiftKey = true;
+//   } else {
+//     shiftKey = false;
+//   }
+// });
 
 Template.play.onRendered(() => {
+  console.clear();
+
   let board = null;
   let aurora = null;
 
@@ -26,18 +28,19 @@ Template.play.onRendered(() => {
 
   // eslint-disable-next-line consistent-return
   function onDrop(source, target, piece) {
-    // $('.highlight-moves-white').removeClass('highlight-moves-white');
-    // $('.highlight-moves-black').removeClass('highlight-moves-black');
-    // $('.highlight-moves-source-white').removeClass(
-    //   'highlight-moves-source-white',
-    // );
-    // $('.highlight-moves-source-black').removeClass(
-    //   'highlight-moves-source-black',
-    // );
+    // const move = aurora.isLegalMove(source, target);
+    // if (move) {
+    //   aurora.playMove(move);
+    //   aurora.update();
+    // } else {
+    //   return 'snapback';
+    // }
   }
 
   // eslint-disable-next-line consistent-return
-  function onSnapEnd() {}
+  function onSnapEnd() {
+    // board.position(aurora.getFen());
+  }
 
   const boardConfig = {
     pieceTheme: '/chesspieces/neo/{piece}.png',
