@@ -19,6 +19,8 @@ export class Aurora {
     this.EXTENDED_CENTER = 0x3c3c3c3c0000n;
     this.KING_SIDE = 0x0f0f0f0f0f0f0f0fn;
     this.QUEEN_SIDE = 0xf0f0f0f0f0f0f0f0n;
+    this.KNIGHT_SPAN = 0xa1100110an;
+    this.KING_SPAN = 0x70507n;
 
     this.load(this.fen);
     this.getMoves();
@@ -140,10 +142,71 @@ export class Aurora {
       this.empty = BigInt(~this.occupied);
 
       moves.push(...this.whitePawnsMoves());
-      moves.push(...this.whiteRooksMoves());
+      // moves.push(...this.whiteRooksMoves());
+      moves.push(...this.knightsMoves('wn', this.notWhitePieces));
+      moves.push(...this.kingsMoves('wk', this.notWhitePieces));
+      // moves.forEach(move => this.ascii(move.mask, move.piece));
     }
 
     console.log(moves);
+    return moves;
+  }
+
+  // convient au deux couleur juste changer notMyPieces
+  kingsMoves(type, notMyPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+
+        let movesMask;
+        if (i > 9) {
+          movesMask = (this.KING_SPAN << BigInt(i - 9)) & notMyPieces;
+        } else {
+          movesMask = (this.KING_SPAN >> BigInt(9 - i)) & notMyPieces;
+        }
+
+        if (piece & this.FILE_A) movesMask &= ~this.FILE_H;
+        else if (piece & this.FILE_H) movesMask &= ~this.FILE_A;
+
+        for (let j = 0; j < 64; j++) {
+          if (movesMask & (1n << BigInt(j))) {
+            moves.push({ mask: (1n << BigInt(j)) | piece, piece: type });
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  // convient au deux couleur juste changer notMyPieces
+  knightsMoves(type, notMyPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+
+        let movesMask;
+        if (i > 18) {
+          movesMask = (this.KNIGHT_SPAN << BigInt(i - 18)) & notMyPieces;
+        } else {
+          movesMask = (this.KNIGHT_SPAN >> BigInt(18 - i)) & notMyPieces;
+        }
+
+        if (piece & this.FILE_AB) movesMask &= ~this.FILE_GH;
+        else if (piece & this.FILE_GH) movesMask &= ~this.FILE_AB;
+
+        for (let j = 0; j < 64; j++) {
+          if (movesMask & (1n << BigInt(j))) {
+            moves.push({ mask: (1n << BigInt(j)) | piece, piece: type });
+          }
+        }
+      }
+    }
+
     return moves;
   }
 
@@ -152,19 +215,46 @@ export class Aurora {
 
     for (let i = 0; i < 64; i++) {
       if (this.wr & (1n << BigInt(i))) {
-        const piece = 1n << BigInt(i);
-        const left = this.occupied ^ (this.occupied - 2n * piece);
-        const right =
-          this.occupied ^
-          this.reverseBits(
-            this.reverseBits(this.occupied) - 2n * this.reverseBits(piece),
-          );
-        this.ascii(left);
-        this.ascii(right);
+        let piece = 1n << BigInt(i);
+        let rank = 0;
+        let pieceRank = piece;
+        while (pieceRank > 0) {
+          rank++;
+          pieceRank >>= 8n;
+        }
+        const rankMask = 0xffn << BigInt((rank - 1) * 8);
+        const occupiedHorizontal =
+          (rankMask & this.occupied) >> BigInt((rank - 1) * 8);
+        piece >>= BigInt((rank - 1) * 8);
+
+        const right = 0x101010101010100n;
+
+        const lineAttacks =
+          occupiedHorizontal ^
+          (((occupiedHorizontal | right) - 2n * piece) & ~right) ^
+          (occupiedHorizontal ^
+            this.r8(
+              ((this.r8(occupiedHorizontal) | right) - 2n * this.r8(piece)) &
+                ~right,
+            ));
+
+        this.ascii(lineAttacks);
       }
     }
 
     return moves;
+  }
+
+  r8(binary) {
+    let binaryString = binary.toString(2);
+    while (binaryString.length < 8) {
+      binaryString = `0${binaryString}`;
+    }
+
+    const reversedBinary = binaryString.split('').reverse().join('');
+    const reversedDecimal = parseInt(reversedBinary, 2);
+
+    return BigInt(reversedDecimal);
   }
 
   whitePawnsMoves() {

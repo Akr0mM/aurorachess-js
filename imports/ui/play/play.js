@@ -5,8 +5,10 @@ import { Aurora } from '../aurora/aurora';
 import './play.html';
 import './play.css';
 
-// const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const fen = '8/8/pp3R1p/8/p2R1p1p/8/4Rp2/8 w - - 0 1';
+const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+// const rooksFen = '8/8/pp3R1p/8/p2R1p1p/8/4Rp2/8 w - - 0 1';
+// const knightsFen = 'N7/2p1p1N1/1P2p3/3N4/1N4p1/4N3/2P4N/5P2 w - - 0 1';
+// const kingsFen = '8/8/P1pP3P/Kp1Kp1PK/p1PpP1pp/8/Pp4Pp/KP4pK w - - 0 1';
 
 // let shiftKey = false;
 
