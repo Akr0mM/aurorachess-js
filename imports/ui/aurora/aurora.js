@@ -71,9 +71,20 @@ export class Aurora {
 
     const fenSplit = fen.split(' ');
     const fenBoard = fenSplit[0];
+
+    // turn
     this.turn = fenSplit[1] === 'w' ? 1 : 0;
+
+    // castling rights
+    if (fenSplit[2] !== '-') {
+      this.castlingRights = fenSplit[2].split('');
+    }
+    console.log(this.castlingRights);
+
+    // en passant
     if (fenSplit[3] !== '-') this.enPassant = this.enPassantBitboard(fenSplit[3]);
 
+    // fen
     fenBoard.split('').forEach(char => {
       if (char !== '/') {
         if (Number(char)) {
@@ -143,8 +154,9 @@ export class Aurora {
 
       moves.push(...this.whitePawnsMoves());
       moves.push(...this.knightsMoves('wn', this.notWhitePieces));
-      moves.push(...this.kingsMoves('wk', this.notWhitePieces));
-      moves.push(...this.whiteRooksMoves());
+      // moves.push(...this.kingsMoves('wk', this.notWhitePieces));
+      // moves.push(...this.whiteRooksMoves());
+      moves.push(...this.whiteCastlesMoves());
     } else {
       this.notBlackPieces = BigInt(
         ~(this.bp | this.br | this.bn | this.bb | this.bq | this.bk | this.wk),
@@ -154,9 +166,10 @@ export class Aurora {
         this.wp | this.wr | this.wn | this.wb | this.wq,
       );
 
-      moves.push(...this.blackPawnsMoves());
-      moves.push(...this.knightsMoves('bn', this.notBlackPieces));
-      moves.push(...this.kingsMoves('bk', this.notBlackPieces));
+      // moves.push(...this.blackPawnsMoves());
+      // moves.push(...this.knightsMoves('bn', this.notBlackPieces));
+      // moves.push(...this.kingsMoves('bk', this.notBlackPieces));
+      moves.push(...this.blackCastlesMoves());
     }
 
     console.log(moves);
@@ -666,6 +679,64 @@ export class Aurora {
           promotion: { piece: 'wb', mask: promotionMask },
         });
       }
+    }
+
+    return moves;
+  }
+
+  whiteCastlesMoves() {
+    const moves = [];
+
+    if (
+      this.castlingRights.includes('K') &&
+      2n & this.empty &&
+      4n & this.empty
+    ) {
+      moves.push({ mask: 0xan, piece: 'wk', castle: 5n });
+    }
+
+    if (
+      this.castlingRights.includes('Q') &&
+      0x10n & this.empty &&
+      0x20n & this.empty &&
+      0x40n & this.empty
+    ) moves.push({ mask: 0x28n, piece: 'wk', castle: 0x90n });
+
+    return moves;
+  }
+
+  blackCastlesMoves() {
+    const moves = [];
+
+    const f8 = 0x400000000000000n;
+    const g8 = 0x200000000000000n;
+    const d8 = 0x1000000000000000n;
+    const c8 = 0x2000000000000000n;
+    const b8 = 0x4000000000000000n;
+
+    if (
+      this.castlingRights.includes('k') &&
+      f8 & this.empty &&
+      g8 & this.empty
+    ) {
+      moves.push({
+        mask: 0xa00000000000000n,
+        piece: 'bk',
+        castle: 0x500000000000000n,
+      });
+    }
+
+    if (
+      this.castlingRights.includes('q') &&
+      b8 & this.empty &&
+      c8 & this.empty &&
+      d8 & this.empty
+    ) {
+      moves.push({
+        mask: 0x2800000000000000n,
+        piece: 'wk',
+        castle: 0x9000000000000000n,
+      });
     }
 
     return moves;
