@@ -115,6 +115,23 @@ export class Aurora {
   getMoves() {
     const moves = [];
 
+    this.occupied = BigInt(
+      this.wp |
+        this.wr |
+        this.wn |
+        this.wb |
+        this.wq |
+        this.wk |
+        this.bp |
+        this.br |
+        this.bn |
+        this.bb |
+        this.bq |
+        this.bk,
+    );
+
+    this.empty = BigInt(~this.occupied);
+
     if (this.turn) {
       this.notWhitePieces = BigInt(
         ~(this.wp | this.wr | this.wn | this.wb | this.wq | this.wk | this.bk),
@@ -124,31 +141,26 @@ export class Aurora {
         this.bp | this.br | this.bn | this.bb | this.bq,
       );
 
-      this.occupied = BigInt(
-        this.wp |
-          this.wr |
-          this.wn |
-          this.wb |
-          this.wq |
-          this.wk |
-          this.bp |
-          this.br |
-          this.bn |
-          this.bb |
-          this.bq |
-          this.bk,
-      );
-
-      this.empty = BigInt(~this.occupied);
-
       moves.push(...this.whitePawnsMoves());
-      // moves.push(...this.whiteRooksMoves());
       moves.push(...this.knightsMoves('wn', this.notWhitePieces));
       moves.push(...this.kingsMoves('wk', this.notWhitePieces));
-      // moves.forEach(move => this.ascii(move.mask, move.piece));
+      moves.push(...this.whiteRooksMoves());
+    } else {
+      this.notBlackPieces = BigInt(
+        ~(this.bp | this.br | this.bn | this.bb | this.bq | this.bk | this.wk),
+      );
+
+      this.whitePieces = BigInt(
+        this.wp | this.wr | this.wn | this.wb | this.wq,
+      );
+
+      moves.push(...this.blackPawnsMoves());
+      moves.push(...this.knightsMoves('bn', this.notBlackPieces));
+      moves.push(...this.kingsMoves('bk', this.notBlackPieces));
     }
 
     console.log(moves);
+    // moves.forEach(move => this.ascii(move.mask, move.piece));
     return moves;
   }
 
@@ -233,9 +245,11 @@ export class Aurora {
           occupiedHorizontal ^
           (((occupiedHorizontal | right) - 2n * piece) & ~right) ^
           (occupiedHorizontal ^
-            this.r8(
-              ((this.r8(occupiedHorizontal) | right) - 2n * this.r8(piece)) &
+            this.r(
+              ((this.r(occupiedHorizontal, 8) | right) -
+                2n * this.r(piece, 8)) &
                 ~right,
+              8,
             ));
 
         this.ascii(lineAttacks);
@@ -245,16 +259,210 @@ export class Aurora {
     return moves;
   }
 
-  r8(binary) {
-    let binaryString = binary.toString(2);
-    while (binaryString.length < 8) {
-      binaryString = `0${binaryString}`;
+  blackPawnsMoves() {
+    const moves = [];
+
+    // pawn capture right
+    const captureRightMoves =
+      (this.bp >> 7n) & this.whitePieces & ~this.RANK_1 & ~this.FILE_H;
+
+    for (let i = 0; i < 64; i++) {
+      if (captureRightMoves & (1n << BigInt(i))) {
+        let mask = 1n << 7n;
+        mask |= 1n;
+        mask <<= BigInt(i);
+        moves.push({ mask, piece: 'bp' });
+      }
     }
 
-    const reversedBinary = binaryString.split('').reverse().join('');
-    const reversedDecimal = parseInt(reversedBinary, 2);
+    // pawn capture left
+    const captureLeftMoves =
+      (this.bp >> 9n) & this.whitePieces & ~this.RANK_1 & ~this.FILE_A;
 
-    return BigInt(reversedDecimal);
+    for (let i = 0; i < 64; i++) {
+      if (captureLeftMoves & (1n << BigInt(i))) {
+        let mask = 1n << 9n;
+        mask |= 1n;
+        mask <<= BigInt(i);
+        moves.push({ mask, piece: 'bp' });
+      }
+    }
+
+    // pawn capture right en passant
+    const captureRightEnPassantMoves =
+      (this.bp << 1n) & this.whitePieces & this.RANK_4 & ~this.FILE_H;
+
+    for (let i = 0; i < 64; i++) {
+      if (captureRightEnPassantMoves & (1n << BigInt(i))) {
+        const enPassantMask = 1n << (BigInt(i) - 8n);
+        if (enPassantMask === this.enPassant) {
+          let mask = 1n << 7n;
+          mask |= 1n;
+          mask <<= BigInt(i) - 8n;
+          moves.push({ mask, piece: 'bp', enPassant: enPassantMask });
+        }
+      }
+    }
+
+    // pawn capture left en passant
+    const captureLeftEnPassantMoves =
+      (this.bp >> 1n) & this.whitePieces & this.RANK_4 & ~this.FILE_A;
+
+    for (let i = 0; i < 64; i++) {
+      if (captureLeftEnPassantMoves & (1n << BigInt(i))) {
+        const enPassantMask = 1n << (BigInt(i) - 8n);
+        if (enPassantMask === this.enPassant) {
+          let mask = 1n << 9n;
+          mask |= 1n;
+          mask <<= BigInt(i) - 8n;
+          moves.push({ mask, piece: 'bp', enPassant: enPassantMask });
+        }
+      }
+    }
+
+    // pawn move forward 1
+    const forwardMoves = (this.bp >> 8n) & this.empty & ~this.RANK_1;
+
+    for (let i = 0; i < 64; i++) {
+      if (forwardMoves & (1n << BigInt(i))) {
+        let mask = 1n << 8n;
+        mask |= 1n;
+        mask <<= BigInt(i);
+        moves.push({ mask, piece: 'bp' });
+      }
+    }
+
+    // pawn move forward 2
+    const dblForwardMoves =
+      (this.bp >> 16n) & this.empty & (this.empty >> 8n) & this.RANK_5;
+
+    for (let i = 0; i < 64; i++) {
+      if (dblForwardMoves & (1n << BigInt(i))) {
+        let mask = 1n << 16n;
+        mask |= 1n;
+        mask <<= BigInt(i);
+        moves.push({ mask, piece: 'bp' });
+      }
+    }
+
+    // pawn promotion
+
+    // pawn capture right promotion
+    const captureRightPromotionMoves =
+      (this.bp >> 7n) & this.whitePieces & this.RANK_1;
+
+    // peut peut etre ajouter un if (captureRightPromotionMoves) pour pas faire les 64 boucles pour rien
+    for (let i = 0; i < 64; i++) {
+      if (captureRightPromotionMoves & (1n << BigInt(i))) {
+        let mask = 1n << 7n;
+        mask |= 1n;
+        mask <<= BigInt(i);
+
+        const promotionMask = 1n << BigInt(i);
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bq', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bn', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'br', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bb', mask: promotionMask },
+        });
+      }
+    }
+
+    // pawn capture left promotion
+    const captureLeftPromotionMoves =
+      (this.bp >> 9n) & this.whitePieces & this.RANK_1 & ~this.FILE_A;
+
+    // peut peut etre ajouter un if (captureRightPromotionMoves) pour pas faire les 64 boucles pour rien
+    for (let i = 0; i < 64; i++) {
+      if (captureLeftPromotionMoves & (1n << BigInt(i))) {
+        let mask = 1n << 9n;
+        mask |= 1n;
+        mask <<= BigInt(i);
+
+        const promotionMask = 1n << BigInt(i);
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bq', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bn', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'br', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bb', mask: promotionMask },
+        });
+      }
+    }
+
+    // pawn move forward 1 promotion
+    const forwardPromotionMoves = (this.bp >> 8n) & this.empty & this.RANK_1;
+
+    for (let i = 0; i < 64; i++) {
+      if (forwardPromotionMoves & (1n << BigInt(i))) {
+        let mask = 1n << 8n;
+        mask |= 1n;
+        mask <<= BigInt(i);
+
+        const promotionMask = 1n << BigInt(i);
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bq', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bn', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'br', mask: promotionMask },
+        });
+
+        moves.push({
+          mask,
+          piece: 'bp',
+          promotion: { piece: 'bb', mask: promotionMask },
+        });
+      }
+    }
+
+    return moves;
   }
 
   whitePawnsMoves() {
@@ -349,6 +557,7 @@ export class Aurora {
     const captureRightPromotionMoves =
       (this.wp << 7n) & this.blackPieces & this.RANK_8 & ~this.FILE_A;
 
+    // peut peut etre ajouter un if (captureRightPromotionMoves) pour pas faire les 64 boucles pour rien
     for (let i = 0; i < 64; i++) {
       if (captureRightPromotionMoves & (1n << BigInt(i))) {
         let mask = 1n << 7n;
@@ -387,6 +596,7 @@ export class Aurora {
     const captureLeftPromotionMoves =
       (this.wp << 9n) & this.blackPieces & this.RANK_8 & ~this.FILE_H;
 
+    // peut peut etre ajouter un if (captureRightPromotionMoves) pour pas faire les 64 boucles pour rien
     for (let i = 0; i < 64; i++) {
       if (captureLeftPromotionMoves & (1n << BigInt(i))) {
         let mask = 1n << 9n;
@@ -461,6 +671,18 @@ export class Aurora {
     return moves;
   }
 
+  r(binary, l) {
+    let binaryString = binary.toString(2);
+    while (binaryString.length < l) {
+      binaryString = `0${binaryString}`;
+    }
+
+    const reversedBinary = binaryString.split('').reverse().join('');
+    const reversedDecimal = parseInt(reversedBinary, 2);
+
+    return BigInt(reversedDecimal);
+  }
+
   enPassantBitboard(square) {
     const rankToIndex = {
       a: 7,
@@ -498,18 +720,5 @@ export class Aurora {
 
     if (text) console.log(`${text} : \x1b[3m(table)\x1b[0m`);
     console.table(board);
-  }
-
-  reverseBits(num) {
-    let result = 0n;
-
-    while (num > 0n) {
-      const bit = num & 1n;
-      result = (result << 1n) | bit;
-
-      num >>= 1n;
-    }
-
-    return result;
   }
 }
