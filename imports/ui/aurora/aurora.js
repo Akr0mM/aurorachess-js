@@ -23,7 +23,6 @@ export class Aurora {
     this.KING_SPAN = 0x70507n;
 
     this.load(this.fen);
-    this.getMoves();
   }
 
   load(fen) {
@@ -79,10 +78,9 @@ export class Aurora {
     if (fenSplit[2] !== '-') {
       this.castlingRights = fenSplit[2].split('');
     }
-    console.log(this.castlingRights);
 
     // en passant
-    if (fenSplit[3] !== '-') this.enPassant = this.enPassantBitboard(fenSplit[3]);
+    if (fenSplit[3] !== '-') this.enPassant = this.squareBitboard(fenSplit[3]);
 
     // fen
     fenBoard.split('').forEach(char => {
@@ -123,6 +121,72 @@ export class Aurora {
     this.bk = BigInt(`0b${bb.bk}`);
   }
 
+  playMove(move) {
+    // update the bitboard of the piece that play
+    this[move.piece] ^= move.mask;
+
+    // switch turn
+    this.turn = !this.turn;
+
+    // // check if move is a capture to update the capture piece's bitboard (remove the piece)
+
+    // // check if a rook is capture to remove castle on its side
+
+    // // disable castle after a rook move on his side
+    // if (move.piece === 'wr') {
+
+    // } else if (move.piece === 'br') {
+
+    // }
+
+    // disable castling after kings move
+    if (move.piece === 'wk') {
+      const kingIndex = this.castlingRights.indexOf('K');
+      if (kingIndex !== -1) this.castlingRights.splice(kingIndex, 1);
+
+      const queenIndex = this.castlingRights.indexOf('Q');
+      if (queenIndex !== -1) this.castlingRights.splice(queenIndex, 1);
+    } else if (move.piece === 'bk') {
+      const kingIndex = this.castlingRights.indexOf('k');
+      if (kingIndex !== -1) this.castlingRights.splice(kingIndex, 1);
+
+      const queenIndex = this.castlingRights.indexOf('q');
+      if (queenIndex !== -1) this.castlingRights.splice(queenIndex, 1);
+    }
+
+    // update rook bitboard after a castle
+    if (move.castle) {
+      this[move.castle.piece] ^= move.castle.mask;
+    }
+
+    // update pawn bitboard after en passant capture
+    if (move.enPassant) {
+      if (this.turn) this.wp ^= move.enPassant << 8n;
+      else this.bp ^= move.enPassant >> 8n;
+    }
+
+    // enable en passant capture on a pawn after he moves forward by two
+    if (move.enableEnPassant) {
+      this.ascii(move.enableEnPassant);
+      this.enPassant = move.enableEnPassant;
+    } else {
+      this.enPassant = null;
+    }
+  }
+
+  isLegalMove(source, target) {
+    const moves = this.getMoves();
+    const moveMask = this.squareBitboard(source) | this.squareBitboard(target);
+
+    const legalMove = moves.find(move => move.mask === moveMask);
+
+    return legalMove;
+  }
+
+  updateBoard() {
+    this.board.position(this.getFEN());
+  }
+
   getMoves() {
     const moves = [];
 
@@ -154,7 +218,7 @@ export class Aurora {
 
       moves.push(...this.whitePawnsMoves());
       moves.push(...this.knightsMoves('wn', this.notWhitePieces));
-      // moves.push(...this.kingsMoves('wk', this.notWhitePieces));
+      moves.push(...this.kingsMoves('wk', this.notWhitePieces));
       // moves.push(...this.whiteRooksMoves());
       moves.push(...this.whiteCastlesMoves());
     } else {
@@ -166,13 +230,13 @@ export class Aurora {
         this.wp | this.wr | this.wn | this.wb | this.wq,
       );
 
-      // moves.push(...this.blackPawnsMoves());
-      // moves.push(...this.knightsMoves('bn', this.notBlackPieces));
-      // moves.push(...this.kingsMoves('bk', this.notBlackPieces));
+      moves.push(...this.blackPawnsMoves());
+      moves.push(...this.knightsMoves('bn', this.notBlackPieces));
+      moves.push(...this.kingsMoves('bk', this.notBlackPieces));
       moves.push(...this.blackCastlesMoves());
     }
 
-    console.log(moves);
+    // console.log(moves);
     // moves.forEach(move => this.ascii(move.mask, move.piece));
     return moves;
   }
@@ -354,7 +418,8 @@ export class Aurora {
         let mask = 1n << 16n;
         mask |= 1n;
         mask <<= BigInt(i);
-        moves.push({ mask, piece: 'bp' });
+        const enPassantMask = 1n << (BigInt(i) + 8n);
+        moves.push({ mask, piece: 'bp', enableEnPassant: enPassantMask });
       }
     }
 
@@ -560,7 +625,8 @@ export class Aurora {
         let mask = 1n << 16n;
         mask |= 1n;
         mask <<= BigInt(i) - 16n;
-        moves.push({ mask, piece: 'wp' });
+        const enPassantMask = 1n << (BigInt(i) - 8n);
+        moves.push({ mask, piece: 'wp', enableEnPassant: enPassantMask });
       }
     }
 
@@ -692,7 +758,11 @@ export class Aurora {
       2n & this.empty &&
       4n & this.empty
     ) {
-      moves.push({ mask: 0xan, piece: 'wk', castle: 5n });
+      moves.push({
+        mask: 0xan,
+        piece: 'wk',
+        castle: { mask: 5n, piece: 'wr' },
+      });
     }
 
     if (
@@ -700,7 +770,13 @@ export class Aurora {
       0x10n & this.empty &&
       0x20n & this.empty &&
       0x40n & this.empty
-    ) moves.push({ mask: 0x28n, piece: 'wk', castle: 0x90n });
+    ) {
+      moves.push({
+        mask: 0x28n,
+        piece: 'wk',
+        castle: { mask: 0x90n, piece: 'wr' },
+      });
+    }
 
     return moves;
   }
@@ -722,7 +798,7 @@ export class Aurora {
       moves.push({
         mask: 0xa00000000000000n,
         piece: 'bk',
-        castle: 0x500000000000000n,
+        castle: { mask: 0x500000000000000n, piece: 'br' },
       });
     }
 
@@ -734,8 +810,8 @@ export class Aurora {
     ) {
       moves.push({
         mask: 0x2800000000000000n,
-        piece: 'wk',
-        castle: 0x9000000000000000n,
+        piece: 'bk',
+        castle: { mask: 0x9000000000000000n, piece: 'br' },
       });
     }
 
@@ -754,7 +830,7 @@ export class Aurora {
     return BigInt(reversedDecimal);
   }
 
-  enPassantBitboard(square) {
+  squareBitboard(square) {
     const rankToIndex = {
       a: 7,
       b: 6,
@@ -772,6 +848,65 @@ export class Aurora {
     const index = rankToIndex[rank] + (file - 1) * 8;
     const mask = 1n << BigInt(index);
     return mask;
+  }
+
+  getFEN() {
+    let fen = '';
+
+    function toBinary64Bits(number) {
+      while (number.length < 64) {
+        number = `0${number}`;
+      }
+
+      return number;
+    }
+
+    const pieces = [
+      { piece: 'P', bb: toBinary64Bits(this.wp.toString(2)) },
+      { piece: 'R', bb: toBinary64Bits(this.wr.toString(2)) },
+      { piece: 'N', bb: toBinary64Bits(this.wn.toString(2)) },
+      { piece: 'B', bb: toBinary64Bits(this.wb.toString(2)) },
+      { piece: 'Q', bb: toBinary64Bits(this.wq.toString(2)) },
+      { piece: 'K', bb: toBinary64Bits(this.wk.toString(2)) },
+      { piece: 'p', bb: toBinary64Bits(this.bp.toString(2)) },
+      { piece: 'r', bb: toBinary64Bits(this.br.toString(2)) },
+      { piece: 'n', bb: toBinary64Bits(this.bn.toString(2)) },
+      { piece: 'b', bb: toBinary64Bits(this.bb.toString(2)) },
+      { piece: 'q', bb: toBinary64Bits(this.bq.toString(2)) },
+      { piece: 'k', bb: toBinary64Bits(this.bk.toString(2)) },
+    ];
+
+    let blankSpaces = 0;
+
+    for (let i = 0; i < 64; i++) {
+      for (let j = 0; j < 12; j++) {
+        if (pieces[j].bb[i] === '1') {
+          if (blankSpaces) fen += blankSpaces;
+          fen += pieces[j].piece;
+          blankSpaces = 0;
+          break;
+        } else if (j === 11) {
+          blankSpaces++;
+          break;
+        }
+      }
+
+      if (
+        i === 7 ||
+        i === 15 ||
+        i === 23 ||
+        i === 31 ||
+        i === 39 ||
+        i === 47 ||
+        i === 55
+      ) {
+        if (blankSpaces !== 0) fen += blankSpaces;
+        blankSpaces = 0;
+        fen += '/';
+      }
+    }
+
+    return fen;
   }
 
   ascii(bitboard, text) {
