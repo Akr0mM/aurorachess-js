@@ -9,9 +9,9 @@ const fen = {
     'kQqNrBPR/rRbnQbQp/RbQQkPNQ/pBnRPqPp/QbpkKNKK/NqKBpBrp/pkRqnkKp/KrBpKRqr w - - 0 1',
 };
 
-describe('Aurora Bitboards Initialization ', function () {
-  let aurora;
+let aurora;
 
+describe('Aurora Bitboards Initialization ', function () {
   it('give all the bitboards from starting position', function () {
     aurora = new Aurora({ fen: fen.start });
     assert.strictEqual(aurora.wp.toString(16), 'ff00'); // bitboard des pions blanc a la position de depart
@@ -46,13 +46,11 @@ describe('Aurora Bitboards Initialization ', function () {
 });
 
 describe('Aurora Get Moves', function () {
-  let aurora;
-
   it('should give 20 moves from the starting position', function () {
     aurora = new Aurora({ fen: fen.start });
 
     const moves = aurora.getMoves();
 
-    assert.strictEqual(moves.length, 16);
+    assert.strictEqual(moves.length, 20);
   });
 });
