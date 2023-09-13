@@ -72,7 +72,7 @@ export class Aurora {
     const fenBoard = fenSplit[0];
 
     // turn
-    this.turn = fenSplit[1] === 'w' ? 1 : 0;
+    this.turn = fenSplit[1] === 'w';
 
     // castling rights
     if (fenSplit[2] !== '-') {
@@ -129,6 +129,12 @@ export class Aurora {
     this.turn = !this.turn;
 
     // // check if move is a capture to update the capture piece's bitboard (remove the piece)
+    if (move.capture) {
+      if (this.turn) this.deleteWhitePiece(move.capture);
+      else this.deleteBlackPiece(move.capture);
+      // this.ascii(this.allWhitePieces(), 'white pieces');
+      // this.ascii(this.allBlackPieces(), 'black pieces');
+    }
 
     // // check if a rook is capture to remove castle on its side
 
@@ -167,11 +173,26 @@ export class Aurora {
 
     // enable en passant capture on a pawn after he moves forward by two
     if (move.enableEnPassant) {
-      this.ascii(move.enableEnPassant);
       this.enPassant = move.enableEnPassant;
     } else {
       this.enPassant = null;
     }
+  }
+
+  deleteBlackPiece(piece) {
+    if (this.bp & piece) this.bp ^= piece;
+    else if (this.bn & piece) this.bn ^= piece;
+    else if (this.bb & piece) this.bb ^= piece;
+    else if (this.br & piece) this.br ^= piece;
+    else if (this.bq & piece) this.bq ^= piece;
+  }
+
+  deleteWhitePiece(piece) {
+    if (this.wp & piece) this.wp ^= piece;
+    else if (this.wn & piece) this.wn ^= piece;
+    else if (this.wb & piece) this.wb ^= piece;
+    else if (this.wr & piece) this.wr ^= piece;
+    else if (this.wq & piece) this.wq ^= piece;
   }
 
   isLegalMove(source, target) {
@@ -208,6 +229,8 @@ export class Aurora {
     this.empty = BigInt(~this.occupied);
 
     if (this.turn) {
+      // WHITE TO MOVE
+
       this.notWhitePieces = BigInt(
         ~(this.wp | this.wr | this.wn | this.wb | this.wq | this.wk | this.bk),
       );
@@ -217,11 +240,17 @@ export class Aurora {
       );
 
       moves.push(...this.whitePawnsMoves());
-      moves.push(...this.knightsMoves('wn', this.notWhitePieces));
-      moves.push(...this.kingsMoves('wk', this.notWhitePieces));
+      moves.push(
+        ...this.knightsMoves('wn', this.notWhitePieces, this.blackPieces),
+      );
+      moves.push(
+        ...this.kingsMoves('wk', this.notWhitePieces, this.blackPieces),
+      );
       // moves.push(...this.whiteRooksMoves());
       moves.push(...this.whiteCastlesMoves());
     } else {
+      // BLACK TO MOVE
+
       this.notBlackPieces = BigInt(
         ~(this.bp | this.br | this.bn | this.bb | this.bq | this.bk | this.wk),
       );
@@ -231,18 +260,23 @@ export class Aurora {
       );
 
       moves.push(...this.blackPawnsMoves());
-      moves.push(...this.knightsMoves('bn', this.notBlackPieces));
-      moves.push(...this.kingsMoves('bk', this.notBlackPieces));
+      moves.push(
+        ...this.knightsMoves('bn', this.notBlackPieces, this.whitePieces),
+      );
+      moves.push(
+        ...this.kingsMoves('bk', this.notBlackPieces, this.whitePieces),
+      );
       moves.push(...this.blackCastlesMoves());
     }
 
-    // console.log(moves);
+    console.log(moves);
+    // this.ascii(68719476736n);
     // moves.forEach(move => this.ascii(move.mask, move.piece));
     return moves;
   }
 
   // convient au deux couleur juste changer notMyPieces
-  kingsMoves(type, notMyPieces) {
+  kingsMoves(type, notMyPieces, oppPieces) {
     const moves = [];
 
     for (let i = 0; i < 64; i++) {
@@ -261,7 +295,11 @@ export class Aurora {
 
         for (let j = 0; j < 64; j++) {
           if (movesMask & (1n << BigInt(j))) {
-            moves.push({ mask: (1n << BigInt(j)) | piece, piece: type });
+            const move = { mask: (1n << BigInt(j)) | piece, piece: type };
+            if ((1n << BigInt(j)) & oppPieces) {
+              move.capture = 1n << BigInt(j);
+            }
+            moves.push(move);
           }
         }
       }
@@ -271,7 +309,7 @@ export class Aurora {
   }
 
   // convient au deux couleur juste changer notMyPieces
-  knightsMoves(type, notMyPieces) {
+  knightsMoves(type, notMyPieces, oppPieces) {
     const moves = [];
 
     for (let i = 0; i < 64; i++) {
@@ -290,7 +328,11 @@ export class Aurora {
 
         for (let j = 0; j < 64; j++) {
           if (movesMask & (1n << BigInt(j))) {
-            moves.push({ mask: (1n << BigInt(j)) | piece, piece: type });
+            const move = { mask: (1n << BigInt(j)) | piece, piece: type };
+            if ((1n << BigInt(j)) & oppPieces) {
+              move.capture = 1n << BigInt(j);
+            }
+            moves.push(move);
           }
         }
       }
@@ -348,7 +390,7 @@ export class Aurora {
         let mask = 1n << 7n;
         mask |= 1n;
         mask <<= BigInt(i);
-        moves.push({ mask, piece: 'bp' });
+        moves.push({ mask, piece: 'bp', capture: 1n << BigInt(i) });
       }
     }
 
@@ -361,7 +403,7 @@ export class Aurora {
         let mask = 1n << 9n;
         mask |= 1n;
         mask <<= BigInt(i);
-        moves.push({ mask, piece: 'bp' });
+        moves.push({ mask, piece: 'bp', capture: 1n << BigInt(i) });
       }
     }
 
@@ -555,7 +597,7 @@ export class Aurora {
         let mask = 1n << 7n;
         mask |= 1n;
         mask <<= BigInt(i) - 7n;
-        moves.push({ mask, piece: 'wp' });
+        moves.push({ mask, piece: 'wp', capture: 1n << BigInt(i) });
       }
     }
 
@@ -568,7 +610,7 @@ export class Aurora {
         let mask = 1n << 9n;
         mask |= 1n;
         mask <<= BigInt(i) - 9n;
-        moves.push({ mask, piece: 'wp' });
+        moves.push({ mask, piece: 'wp', capture: 1n << BigInt(i) });
       }
     }
 
@@ -848,6 +890,14 @@ export class Aurora {
     const index = rankToIndex[rank] + (file - 1) * 8;
     const mask = 1n << BigInt(index);
     return mask;
+  }
+
+  allWhitePieces() {
+    return this.wp | this.wr | this.wn | this.wb | this.wq | this.wk;
+  }
+
+  allBlackPieces() {
+    return this.bp | this.br | this.bn | this.bb | this.bq | this.bk;
   }
 
   getFEN() {
