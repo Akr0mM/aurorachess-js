@@ -5,6 +5,19 @@ body {
   height: 100vh;
 }
 
+.footer {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+#undo-button {
+  border-radius: 8px;
+  border: 2px solid black;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
 .highlight-moves-white {
   background-color: #db4d51 !important;
 }

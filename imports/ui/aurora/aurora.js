@@ -5,6 +5,7 @@ export class Aurora {
     this.fen = config.fen;
     this.board = config.board;
     this.enPassant = '';
+    this.undoHistory = [];
 
     // bitboards mask
     this.FILE_A = 0x8080808080808080n;
@@ -124,17 +125,21 @@ export class Aurora {
   playMove(move) {
     // update the bitboard of the piece that play
     this[move.piece] ^= move.mask;
+    const undo = move;
 
     // switch turn
     this.turn = !this.turn;
 
     // // check if move is a capture to update the capture piece's bitboard (remove the piece)
     if (move.capture) {
-      if (this.turn) this.deleteWhitePiece(move.capture);
-      else this.deleteBlackPiece(move.capture);
+      if (this.turn) this.captureWhitePiece(move.capture, undo);
+      else this.captureBlackPiece(move.capture, undo);
       // this.ascii(this.allWhitePieces(), 'white pieces');
       // this.ascii(this.allBlackPieces(), 'black pieces');
     }
+
+    this.undoHistory.unshift(undo);
+    console.log(this.undoHistory);
 
     // // check if a rook is capture to remove castle on its side
 
@@ -179,20 +184,68 @@ export class Aurora {
     }
   }
 
-  deleteBlackPiece(piece) {
-    if (this.bp & piece) this.bp ^= piece;
-    else if (this.bn & piece) this.bn ^= piece;
-    else if (this.bb & piece) this.bb ^= piece;
-    else if (this.br & piece) this.br ^= piece;
-    else if (this.bq & piece) this.bq ^= piece;
+  captureBlackPiece(piece, undo) {
+    const capture = { mask: piece };
+    if (this.bp & piece) {
+      this.bp ^= piece;
+      capture.piece = 'bp';
+    } else if (this.bn & piece) {
+      this.bn ^= piece;
+      capture.piece = 'bn';
+    } else if (this.bb & piece) {
+      this.bb ^= piece;
+      capture.piece = 'bb';
+    } else if (this.br & piece) {
+      this.br ^= piece;
+      capture.piece = 'br';
+    } else if (this.bq & piece) {
+      this.bq ^= piece;
+      capture.piece = 'bq';
+    }
+    undo.capture = capture;
+    console.log(undo);
   }
 
-  deleteWhitePiece(piece) {
-    if (this.wp & piece) this.wp ^= piece;
-    else if (this.wn & piece) this.wn ^= piece;
-    else if (this.wb & piece) this.wb ^= piece;
-    else if (this.wr & piece) this.wr ^= piece;
-    else if (this.wq & piece) this.wq ^= piece;
+  captureWhitePiece(piece, undo) {
+    const capture = { mask: piece };
+    if (this.wp & piece) {
+      this.wp ^= piece;
+      capture.piece = 'wp';
+    } else if (this.wn & piece) {
+      this.wn ^= piece;
+      capture.piece = 'wn';
+    } else if (this.wb & piece) {
+      this.wb ^= piece;
+      capture.piece = 'wb';
+    } else if (this.wr & piece) {
+      this.wr ^= piece;
+      capture.piece = 'wr';
+    } else if (this.wq & piece) {
+      this.wq ^= piece;
+      capture.piece = 'wq';
+    }
+    undo.capture = capture;
+  }
+
+  undoMove() {
+    const move = this.undoHistory[0];
+    this[move.piece] ^= move.mask;
+
+    if (move.capture) {
+      this[move.capture.piece] |= move.capture.mask;
+    }
+
+    if (move.enPassant) {
+      console.log(move);
+      this.ascii(move.enPassant);
+      if (this.turn) this.wp |= move.enPassant << 8n;
+      else this.bp |= move.enPassant >> 8n;
+
+      this.enPassant = move.enPassant;
+    } else this.enPassant = null;
+
+    this.undoHistory.shift();
+    this.turn = !this.turn;
   }
 
   isLegalMove(source, target) {
@@ -202,10 +255,6 @@ export class Aurora {
     const legalMove = moves.find(move => move.mask === moveMask);
 
     return legalMove;
-  }
-
-  updateBoard() {
-    this.board.position(this.getFEN());
   }
 
   getMoves() {
@@ -954,6 +1003,8 @@ export class Aurora {
         blankSpaces = 0;
         fen += '/';
       }
+
+      if (i === 63 && blankSpaces !== 0) fen += blankSpaces;
     }
 
     return fen;

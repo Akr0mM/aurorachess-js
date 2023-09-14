@@ -24,6 +24,14 @@ Template.play.onRendered(() => {
   let board = null;
   let aurora = null;
 
+  $('#undo-button').on('click', () => {
+    if (aurora.undoHistory.length !== 0) {
+      aurora.undoMove();
+      board.position(aurora.getFEN());
+      board.resize();
+    }
+  });
+
   function onDragStart(source, piece) {}
 
   // eslint-disable-next-line consistent-return
@@ -32,7 +40,7 @@ Template.play.onRendered(() => {
     const move = aurora.isLegalMove(source, target);
     if (move) {
       aurora.playMove(move);
-      aurora.updateBoard();
+      board.position(aurora.getFEN());
     } else {
       return 'snapback';
     }
