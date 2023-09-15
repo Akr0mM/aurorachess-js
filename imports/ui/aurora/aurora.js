@@ -235,6 +235,13 @@ export class Aurora {
       this[move.capture.piece] |= move.capture.mask;
     }
 
+    //! Remettre les castling right pour un coup de roi car ca les enleve MAIS ils etaitent deja peut etre enlenve donc save les current castling rights
+    //! A chaque coup de roi et les save dans this.undoHistory pour pouvoir les remettres au moment du undo (inshallah tas compris car c'est important)
+
+    if (move.castle) {
+      this[move.castle.piece] ^= move.castle.mask;
+    }
+
     if (move.enPassant) {
       console.log(move);
       this.ascii(move.enPassant);
