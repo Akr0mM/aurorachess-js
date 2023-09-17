@@ -130,39 +130,54 @@ export class Aurora {
     // switch turn
     this.turn = !this.turn;
 
-    // // check if move is a capture to update the capture piece's bitboard (remove the piece)
+    // check if move is a capture to update the capture piece's bitboard (remove the piece)
     if (move.capture) {
       if (this.turn) this.captureWhitePiece(move.capture, undo);
       else this.captureBlackPiece(move.capture, undo);
-      // this.ascii(this.allWhitePieces(), 'white pieces');
-      // this.ascii(this.allBlackPieces(), 'black pieces');
     }
 
-    this.undoHistory.unshift(undo);
-    console.log(this.undoHistory);
+    // ! check if a rook is capture to remove castle on its side
+    // * mettre les castling rights qu'on enlenve dans undo.castling pr pouvoir les remettre au undo
 
-    // // check if a rook is capture to remove castle on its side
+    // ! disable castle after a rook move on his side
+    // * mettre les castling rights qu'on enlenve dans undo.castling pr pouvoir les remettre au undo
+    // ? if (move.piece === 'wr') {
 
-    // // disable castle after a rook move on his side
-    // if (move.piece === 'wr') {
+    // ? } else if (move.piece === 'br') {
 
-    // } else if (move.piece === 'br') {
-
-    // }
+    // ? }
 
     // disable castling after kings move
     if (move.piece === 'wk') {
+      const castlingRights = [];
       const kingIndex = this.castlingRights.indexOf('K');
-      if (kingIndex !== -1) this.castlingRights.splice(kingIndex, 1);
+      if (kingIndex !== -1) {
+        castlingRights.push('K');
+        this.castlingRights.splice(kingIndex, 1);
+      }
 
       const queenIndex = this.castlingRights.indexOf('Q');
-      if (queenIndex !== -1) this.castlingRights.splice(queenIndex, 1);
+      if (queenIndex !== -1) {
+        castlingRights.push('Q');
+        this.castlingRights.splice(queenIndex, 1);
+      }
+
+      if (castlingRights.length !== 0) undo.castlingRights = castlingRights;
     } else if (move.piece === 'bk') {
+      const castlingRights = [];
       const kingIndex = this.castlingRights.indexOf('k');
-      if (kingIndex !== -1) this.castlingRights.splice(kingIndex, 1);
+      if (kingIndex !== -1) {
+        castlingRights.push('k');
+        this.castlingRights.splice(kingIndex, 1);
+      }
 
       const queenIndex = this.castlingRights.indexOf('q');
-      if (queenIndex !== -1) this.castlingRights.splice(queenIndex, 1);
+      if (queenIndex !== -1) {
+        castlingRights.push('q');
+        this.castlingRights.splice(queenIndex, 1);
+      }
+
+      if (castlingRights.length !== 0) undo.castlingRights = castlingRights;
     }
 
     // update rook bitboard after a castle
@@ -182,6 +197,9 @@ export class Aurora {
     } else {
       this.enPassant = null;
     }
+
+    this.undoHistory.unshift(undo);
+    console.log(this.undoHistory);
   }
 
   captureBlackPiece(piece, undo) {
@@ -235,8 +253,10 @@ export class Aurora {
       this[move.capture.piece] |= move.capture.mask;
     }
 
-    //! Remettre les castling right pour un coup de roi car ca les enleve MAIS ils etaitent deja peut etre enlenve donc save les current castling rights
-    //! A chaque coup de roi et les save dans this.undoHistory pour pouvoir les remettres au moment du undo (inshallah tas compris car c'est important)
+    if (move.castlingRights) {
+      this.castlingRights.push(...move.castlingRights);
+      console.log(this.castlingRights);
+    }
 
     if (move.castle) {
       this[move.castle.piece] ^= move.castle.mask;
