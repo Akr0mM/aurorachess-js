@@ -137,8 +137,11 @@ export class Aurora {
       else this.captureBlackPiece(move.capture, undo);
     }
 
-    //! faire les promotions de pions
-    //* mettre en place touche shift
+    // pawn promotion
+    if (move.promotion) {
+      this[move.piece] ^= move.promotion.mask;
+      this[move.promotion.piece] |= move.promotion.mask;
+    }
 
     // ! check if a rook is capture to remove castle on its side
     // * mettre les castling rights qu'on enlenve dans undo.castling pr pouvoir les remettre au undo
@@ -249,7 +252,13 @@ export class Aurora {
 
   undoMove() {
     const move = this.undoHistory[0];
+    console.log(move);
     this[move.piece] ^= move.mask;
+
+    if (move.promotion) {
+      this[move.piece] ^= move.promotion.mask;
+      this[move.promotion.piece] ^= move.promotion.mask;
+    }
 
     if (move.capture) {
       this[move.capture.piece] |= move.capture.mask;
@@ -281,7 +290,43 @@ export class Aurora {
     const moves = this.getMoves();
     const moveMask = this.squareBitboard(source) | this.squareBitboard(target);
 
-    const legalMove = moves.find(move => move.mask === moveMask);
+    let legalMove = moves.find(move => move.mask === moveMask);
+    if (legalMove && legalMove.promotion) {
+      if (this.shiftKey) {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          // eslint-disable-next-line no-alert
+          const userPiece = prompt('\'Q\', \'N\', \'R\', \'B\'').toLocaleLowerCase();
+          if (
+            userPiece === 'q' ||
+            userPiece === 'n' ||
+            userPiece === 'r' ||
+            userPiece === 'b'
+          ) {
+            legalMove = moves.find(
+              move => move.promotion &&
+                move.promotion.piece[1] === userPiece &&
+                move.mask === moveMask,
+            );
+            console.log(legalMove);
+            break;
+          }
+        }
+      } else {
+        legalMove = moves.find(
+          move => move.promotion &&
+            move.promotion.piece[1] === 'q' &&
+            move.mask === moveMask,
+        );
+      }
+    }
+
+    if (
+      legalMove &&
+      (this[legalMove.piece] & this.squareBitboard(source)) === 0n
+    ) {
+      return false;
+    }
 
     return legalMove;
   }
@@ -935,30 +980,32 @@ export class Aurora {
         mask <<= BigInt(i);
 
         const promotionMask = 1n << BigInt(i);
-
-        moves.push({
+        const moveQueen = {
           mask,
           piece: 'bp',
           promotion: { piece: 'bq', mask: promotionMask },
-        });
+          capture: promotionMask,
+        };
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        moves.push(moveQueen);
+
+        const moveKnight = {
+          ...moveQueen,
           promotion: { piece: 'bn', mask: promotionMask },
-        });
+        };
+        moves.push(moveKnight);
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        const moveRook = {
+          ...moveQueen,
           promotion: { piece: 'br', mask: promotionMask },
-        });
+        };
+        moves.push(moveRook);
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        const moveBishop = {
+          ...moveQueen,
           promotion: { piece: 'bb', mask: promotionMask },
-        });
+        };
+        moves.push(moveBishop);
       }
     }
 
@@ -974,30 +1021,32 @@ export class Aurora {
         mask <<= BigInt(i);
 
         const promotionMask = 1n << BigInt(i);
-
-        moves.push({
+        const moveQueen = {
           mask,
           piece: 'bp',
           promotion: { piece: 'bq', mask: promotionMask },
-        });
+          capture: promotionMask,
+        };
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        moves.push(moveQueen);
+
+        const moveKnight = {
+          ...moveQueen,
           promotion: { piece: 'bn', mask: promotionMask },
-        });
+        };
+        moves.push(moveKnight);
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        const moveRook = {
+          ...moveQueen,
           promotion: { piece: 'br', mask: promotionMask },
-        });
+        };
+        moves.push(moveRook);
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        const moveBishop = {
+          ...moveQueen,
           promotion: { piece: 'bb', mask: promotionMask },
-        });
+        };
+        moves.push(moveBishop);
       }
     }
 
@@ -1011,30 +1060,31 @@ export class Aurora {
         mask <<= BigInt(i);
 
         const promotionMask = 1n << BigInt(i);
-
-        moves.push({
+        const moveQueen = {
           mask,
           piece: 'bp',
           promotion: { piece: 'bq', mask: promotionMask },
-        });
+        };
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        moves.push(moveQueen);
+
+        const moveKnight = {
+          ...moveQueen,
           promotion: { piece: 'bn', mask: promotionMask },
-        });
+        };
+        moves.push(moveKnight);
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        const moveRook = {
+          ...moveQueen,
           promotion: { piece: 'br', mask: promotionMask },
-        });
+        };
+        moves.push(moveRook);
 
-        moves.push({
-          mask,
-          piece: 'bp',
+        const moveBishop = {
+          ...moveQueen,
           promotion: { piece: 'bb', mask: promotionMask },
-        });
+        };
+        moves.push(moveBishop);
       }
     }
 
@@ -1142,30 +1192,32 @@ export class Aurora {
         mask <<= BigInt(i) - 7n;
 
         const promotionMask = 1n << BigInt(i);
-
-        moves.push({
+        const moveQueen = {
           mask,
           piece: 'wp',
           promotion: { piece: 'wq', mask: promotionMask },
-        });
+          capture: promotionMask,
+        };
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        moves.push(moveQueen);
+
+        const moveKnight = {
+          ...moveQueen,
           promotion: { piece: 'wn', mask: promotionMask },
-        });
+        };
+        moves.push(moveKnight);
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        const moveRook = {
+          ...moveQueen,
           promotion: { piece: 'wr', mask: promotionMask },
-        });
+        };
+        moves.push(moveRook);
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        const moveBishop = {
+          ...moveQueen,
           promotion: { piece: 'wb', mask: promotionMask },
-        });
+        };
+        moves.push(moveBishop);
       }
     }
 
@@ -1181,30 +1233,32 @@ export class Aurora {
         mask <<= BigInt(i) - 9n;
 
         const promotionMask = 1n << BigInt(i);
-
-        moves.push({
+        const moveQueen = {
           mask,
           piece: 'wp',
           promotion: { piece: 'wq', mask: promotionMask },
-        });
+          capture: promotionMask,
+        };
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        moves.push(moveQueen);
+
+        const moveKnight = {
+          ...moveQueen,
           promotion: { piece: 'wn', mask: promotionMask },
-        });
+        };
+        moves.push(moveKnight);
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        const moveRook = {
+          ...moveQueen,
           promotion: { piece: 'wr', mask: promotionMask },
-        });
+        };
+        moves.push(moveRook);
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        const moveBishop = {
+          ...moveQueen,
           promotion: { piece: 'wb', mask: promotionMask },
-        });
+        };
+        moves.push(moveBishop);
       }
     }
 
@@ -1218,30 +1272,31 @@ export class Aurora {
         mask <<= BigInt(i) - 8n;
 
         const promotionMask = 1n << BigInt(i);
-
-        moves.push({
+        const moveQueen = {
           mask,
           piece: 'wp',
           promotion: { piece: 'wq', mask: promotionMask },
-        });
+        };
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        moves.push(moveQueen);
+
+        const moveKnight = {
+          ...moveQueen,
           promotion: { piece: 'wn', mask: promotionMask },
-        });
+        };
+        moves.push(moveKnight);
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        const moveRook = {
+          ...moveQueen,
           promotion: { piece: 'wr', mask: promotionMask },
-        });
+        };
+        moves.push(moveRook);
 
-        moves.push({
-          mask,
-          piece: 'wp',
+        const moveBishop = {
+          ...moveQueen,
           promotion: { piece: 'wb', mask: promotionMask },
-        });
+        };
+        moves.push(moveBishop);
       }
     }
 

@@ -5,16 +5,16 @@ import { Aurora } from '../aurora/aurora';
 import './play.html';
 import './play.css';
 
-const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-// const fen = '8/3b4/8/5Q2/4r3/1q1R1bB1/8/8 w - - 0 1';
+// const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const fen = 'p1p1p1p1/PPPPPPPP/8/8/8/8/pppppppp/1P1P1P1P w - - 0 1';
 
-let shiftKey = false;
+let aurora = null;
 
 $(document).on('keydown keyup', event => {
   if (event.shiftKey) {
-    shiftKey = true;
+    aurora.shiftKey = true;
   } else {
-    shiftKey = false;
+    aurora.shiftKey = false;
   }
 });
 
@@ -22,7 +22,6 @@ Template.play.onRendered(() => {
   console.clear();
 
   let board = null;
-  let aurora = null;
 
   $('#undo-button').on('click', () => {
     if (aurora.undoHistory.length !== 0) {
@@ -40,7 +39,6 @@ Template.play.onRendered(() => {
     const move = aurora.isLegalMove(source, target);
     if (move) {
       aurora.playMove(move);
-      board.position(aurora.getFEN());
     } else {
       return 'snapback';
     }
@@ -48,7 +46,7 @@ Template.play.onRendered(() => {
 
   // eslint-disable-next-line consistent-return
   function onSnapEnd() {
-    // board.position(aurora.getFen());
+    board.position(aurora.getFEN());
   }
 
   const boardConfig = {
