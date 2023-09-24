@@ -27,7 +27,6 @@ describe('Aurora Bitboards Initialization ', function () {
     assert.strictEqual(aurora.bq.toString(16), '1000000000000000'); // bitboard des dames noire a la position de depart
     assert.strictEqual(aurora.bk.toString(16), '800000000000000'); // bitboard des rois noir a la position de depart
   });
-
   it('give all the bitboards from random position', function () {
     aurora = new Aurora({ fen: fen.random });
     assert.strictEqual(aurora.wp.toString(16), '200040a00000000'); // bitboard des pions blanc a la position random
@@ -52,5 +51,35 @@ describe('Aurora Get Moves', function () {
     const moves = aurora.getMoves();
 
     assert.strictEqual(moves.length, 20);
+  });
+
+  it('should give 400 moves from the starting position', function () {
+    aurora = new Aurora({ fen: fen.start });
+
+    let moves = 0;
+    aurora.getMoves().forEach(move => {
+      aurora.playMove(move);
+      moves += aurora.getMoves().length;
+      aurora.undoMove();
+    });
+
+    assert.strictEqual(moves, 400);
+  });
+
+  it('should give 8902 moves from the starting position', function () {
+    aurora = new Aurora({ fen: fen.start });
+
+    let moves = 0;
+    aurora.getMoves().forEach(move => {
+      aurora.playMove(move);
+      aurora.getMoves().forEach(move1 => {
+        aurora.playMove(move1);
+        moves += aurora.getMoves().length;
+        aurora.undoMove();
+      });
+      aurora.undoMove();
+    });
+
+    assert.strictEqual(moves, 8902);
   });
 });

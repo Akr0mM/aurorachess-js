@@ -311,8 +311,6 @@ export class Aurora {
 
     if (move.castlingRights.length !== 0) {
       this.castlingRights.push(...move.castlingRights);
-      console.log('add castling rights on undo', move.castlingRights);
-      console.log('new castling rights after undo', this.castlingRights);
     }
 
     if (move.castle) {
@@ -320,8 +318,6 @@ export class Aurora {
     }
 
     if (move.enPassant) {
-      console.log(move);
-      this.ascii(move.enPassant);
       if (this.turn) this.wp |= move.enPassant << 8n;
       else this.bp |= move.enPassant >> 8n;
 
@@ -354,7 +350,6 @@ export class Aurora {
                 move.promotion.piece[1] === userPiece &&
                 move.mask === moveMask,
             );
-            console.log(legalMove);
             break;
           }
         }
@@ -455,7 +450,6 @@ export class Aurora {
       moves.push(...this.blackCastlesMoves());
     }
 
-    console.log(moves);
     // this.ascii(68719476736n);
     // moves.forEach(move => this.ascii(move.mask, move.piece));
     return moves;
