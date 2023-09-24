@@ -127,6 +127,7 @@ export class Aurora {
     // update the bitboard of the piece that play
     this[move.piece] ^= move.mask;
     const undo = move;
+    undo.castlingRights = [];
 
     // switch turn
     this.turn = !this.turn;
@@ -143,48 +144,93 @@ export class Aurora {
       this[move.promotion.piece] |= move.promotion.mask;
     }
 
-    // ! check if a rook is capture to remove castle on its side
-    // * mettre les castling rights qu'on enlenve dans undo.castling pr pouvoir les remettre au undo
+    // check if a rook is capture to remove castle on its side
+    if (move.capture && move.capture.piece === 'wr') {
+      if (move.capture.mask === 1n) {
+        const kingIndex = this.castlingRights.indexOf('K');
+        if (kingIndex !== -1) {
+          this.castlingRights.splice(kingIndex, 1);
+          undo.castlingRights.push('K');
+        }
+      } else if (move.capture.mask === 0x80n) {
+        const queenIndex = this.castlingRights.indexOf('Q');
+        if (queenIndex !== -1) {
+          this.castlingRights.splice(queenIndex, 1);
+          undo.castlingRights.push('Q');
+        }
+      }
+    } else if (move.capture && move.capture.piece === 'br') {
+      if (move.capture.mask === 0x100000000000000n) {
+        const kingIndex = this.castlingRights.indexOf('k');
+        if (kingIndex !== -1) {
+          this.castlingRights.splice(kingIndex, 1);
+          undo.castlingRights.push('k');
+        }
+      } else if (move.capture.mask === 0x800000000000000n) {
+        const queenIndex = this.castlingRights.indexOf('q');
+        if (queenIndex !== -1) {
+          this.castlingRights.splice(queenIndex, 1);
+          undo.castlingRights.push('q');
+        }
+      }
+    }
 
-    // ! disable castle after a rook move on his side
-    // * mettre les castling rights qu'on enlenve dans undo.castling pr pouvoir les remettre au undo
-    // ? if (move.piece === 'wr') {
-
-    // ? } else if (move.piece === 'br') {
-
-    // ? }
+    // disable castle after a rook move (on his side)
+    if (move.piece === 'wr') {
+      if (move.mask & 1n) {
+        const kingIndex = this.castlingRights.indexOf('K');
+        if (kingIndex !== -1) {
+          this.castlingRights.splice(kingIndex, 1);
+          undo.castlingRights.push('K');
+        }
+      } else if (move.mask & 0x80n) {
+        const queenIndex = this.castlingRights.indexOf('Q');
+        if (queenIndex !== -1) {
+          this.castlingRights.splice(queenIndex, 1);
+          undo.castlingRights.push('Q');
+        }
+      }
+    } else if (move.piece === 'br') {
+      if (move.mask & 0x100000000000000n) {
+        const kingIndex = this.castlingRights.indexOf('k');
+        if (kingIndex !== -1) {
+          this.castlingRights.splice(kingIndex, 1);
+          undo.castlingRights.push('k');
+        }
+      } else if (move.mask & 0x8000000000000000n) {
+        const queenIndex = this.castlingRights.indexOf('q');
+        if (queenIndex !== -1) {
+          this.castlingRights.splice(queenIndex, 1);
+          undo.castlingRights.push('q');
+        }
+      }
+    }
 
     // disable castling after kings move
     if (move.piece === 'wk') {
-      const castlingRights = [];
       const kingIndex = this.castlingRights.indexOf('K');
       if (kingIndex !== -1) {
-        castlingRights.push('K');
+        undo.castlingRights.push('K');
         this.castlingRights.splice(kingIndex, 1);
       }
 
       const queenIndex = this.castlingRights.indexOf('Q');
       if (queenIndex !== -1) {
-        castlingRights.push('Q');
+        undo.castlingRights.push('Q');
         this.castlingRights.splice(queenIndex, 1);
       }
-
-      if (castlingRights.length !== 0) undo.castlingRights = castlingRights;
     } else if (move.piece === 'bk') {
-      const castlingRights = [];
       const kingIndex = this.castlingRights.indexOf('k');
       if (kingIndex !== -1) {
-        castlingRights.push('k');
+        undo.castlingRights.push('k');
         this.castlingRights.splice(kingIndex, 1);
       }
 
       const queenIndex = this.castlingRights.indexOf('q');
       if (queenIndex !== -1) {
-        castlingRights.push('q');
+        undo.castlingRights.push('q');
         this.castlingRights.splice(queenIndex, 1);
       }
-
-      if (castlingRights.length !== 0) undo.castlingRights = castlingRights;
     }
 
     // update rook bitboard after a castle
@@ -252,7 +298,6 @@ export class Aurora {
 
   undoMove() {
     const move = this.undoHistory[0];
-    console.log(move);
     this[move.piece] ^= move.mask;
 
     if (move.promotion) {
@@ -264,9 +309,10 @@ export class Aurora {
       this[move.capture.piece] |= move.capture.mask;
     }
 
-    if (move.castlingRights) {
+    if (move.castlingRights.length !== 0) {
       this.castlingRights.push(...move.castlingRights);
-      console.log(this.castlingRights);
+      console.log('add castling rights on undo', move.castlingRights);
+      console.log('new castling rights after undo', this.castlingRights);
     }
 
     if (move.castle) {

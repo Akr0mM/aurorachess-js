@@ -6,7 +6,7 @@ import './play.html';
 import './play.css';
 
 // const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const fen = 'p1p1p1p1/PPPPPPPP/8/8/8/8/pppppppp/1P1P1P1P w - - 0 1';
+const fen = 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1';
 
 let aurora = null;
 
