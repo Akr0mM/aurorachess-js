@@ -24,6 +24,7 @@ export class Aurora {
     this.KING_SPAN = 0x70507n;
 
     this.load(this.fen);
+    this.getMoves();
   }
 
   load(fen) {
@@ -78,7 +79,7 @@ export class Aurora {
     // castling rights
     if (fenSplit[2] !== '-') {
       this.castlingRights = fenSplit[2].split('');
-    }
+    } else this.castlingRights = [];
 
     // en passant
     if (fenSplit[3] !== '-') this.enPassant = this.squareBitboard(fenSplit[3]);
@@ -135,6 +136,9 @@ export class Aurora {
       if (this.turn) this.captureWhitePiece(move.capture, undo);
       else this.captureBlackPiece(move.capture, undo);
     }
+
+    //! faire les promotions de pions
+    //* mettre en place touche shift
 
     // ! check if a rook is capture to remove castle on its side
     // * mettre les castling rights qu'on enlenve dans undo.castling pr pouvoir les remettre au undo
@@ -199,7 +203,6 @@ export class Aurora {
     }
 
     this.undoHistory.unshift(undo);
-    console.log(this.undoHistory);
   }
 
   captureBlackPiece(piece, undo) {
@@ -221,7 +224,6 @@ export class Aurora {
       capture.piece = 'bq';
     }
     undo.capture = capture;
-    console.log(undo);
   }
 
   captureWhitePiece(piece, undo) {
@@ -322,7 +324,15 @@ export class Aurora {
       moves.push(
         ...this.kingsMoves('wk', this.notWhitePieces, this.blackPieces),
       );
-      // moves.push(...this.whiteRooksMoves());
+      moves.push(
+        ...this.rooksMoves('wr', this.notWhitePieces, this.blackPieces),
+      );
+      moves.push(
+        ...this.bishopsMoves('wb', this.notWhitePieces, this.blackPieces),
+      );
+      moves.push(
+        ...this.queensMoves('wq', this.notWhitePieces, this.blackPieces),
+      );
       moves.push(...this.whiteCastlesMoves());
     } else {
       // BLACK TO MOVE
@@ -342,6 +352,15 @@ export class Aurora {
       moves.push(
         ...this.kingsMoves('bk', this.notBlackPieces, this.whitePieces),
       );
+      moves.push(
+        ...this.rooksMoves('br', this.notBlackPieces, this.whitePieces),
+      );
+      moves.push(
+        ...this.bishopsMoves('bb', this.notBlackPieces, this.whitePieces),
+      );
+      moves.push(
+        ...this.queensMoves('bq', this.notBlackPieces, this.whitePieces),
+      );
       moves.push(...this.blackCastlesMoves());
     }
 
@@ -349,6 +368,404 @@ export class Aurora {
     // this.ascii(68719476736n);
     // moves.forEach(move => this.ascii(move.mask, move.piece));
     return moves;
+  }
+
+  queensMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    moves.push(...this.eastMoves(type, notMyPieces, oppPieces)); // East Moves for all type pieces
+    moves.push(...this.northMoves(type, notMyPieces, oppPieces)); // North Moves for all type pieces
+    moves.push(...this.westMoves(type, notMyPieces, oppPieces)); // West Moves for all type pieces
+    moves.push(...this.southMoves(type, notMyPieces, oppPieces)); // South Moves for all type pieces
+
+    moves.push(...this.northEastMoves(type, notMyPieces, oppPieces)); // North East Moves for all type pieces
+    moves.push(...this.northWestMoves(type, notMyPieces, oppPieces)); // North West Moves for all type pieces
+    moves.push(...this.southEastMoves(type, notMyPieces, oppPieces)); // South East Moves for all type pieces
+    moves.push(...this.southWestMoves(type, notMyPieces, oppPieces)); // South West Moves for all type pieces
+
+    return moves;
+  }
+
+  bishopsMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    moves.push(...this.northEastMoves(type, notMyPieces, oppPieces)); // North East Moves for all type pieces
+    moves.push(...this.northWestMoves(type, notMyPieces, oppPieces)); // North West Moves for all type pieces
+    moves.push(...this.southEastMoves(type, notMyPieces, oppPieces)); // South East Moves for all type pieces
+    moves.push(...this.southWestMoves(type, notMyPieces, oppPieces)); // South West Moves for all type pieces
+
+    return moves;
+  }
+
+  rooksMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    moves.push(...this.eastMoves(type, notMyPieces, oppPieces)); // East Moves for all type pieces
+    moves.push(...this.northMoves(type, notMyPieces, oppPieces)); // North Moves for all type pieces
+    moves.push(...this.westMoves(type, notMyPieces, oppPieces)); // West Moves for all type pieces
+    moves.push(...this.southMoves(type, notMyPieces, oppPieces)); // South Moves for all type pieces
+
+    return moves;
+  }
+
+  southWestMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+        let attacks = this.southWestMask(piece);
+        const blockers = this.occupied & attacks;
+        if (blockers) {
+          const square = this.msb(blockers);
+          attacks ^= this.southWestMask(square);
+        }
+
+        for (let j = 0; j < 64; j++) {
+          if (attacks & (1n << BigInt(j))) {
+            const target = 1n << BigInt(j);
+            if (target & notMyPieces) {
+              const move = { mask: piece | target, piece: type };
+              if (target & oppPieces) {
+                move.capture = target;
+              }
+              moves.push(move);
+            }
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  southEastMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+        let attacks = this.southEastMask(piece);
+        const blockers = this.occupied & attacks;
+        if (blockers) {
+          const square = this.msb(blockers);
+          attacks ^= this.southEastMask(square);
+        }
+
+        for (let j = 0; j < 64; j++) {
+          if (attacks & (1n << BigInt(j))) {
+            const target = 1n << BigInt(j);
+            if (target & notMyPieces) {
+              const move = { mask: piece | target, piece: type };
+              if (target & oppPieces) {
+                move.capture = target;
+              }
+              moves.push(move);
+            }
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  northWestMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+        let attacks = this.northWestMask(piece);
+        const blockers = this.occupied & attacks;
+        if (blockers) {
+          const square = this.lsb(blockers);
+          attacks ^= this.northWestMask(square);
+        }
+
+        for (let j = 0; j < 64; j++) {
+          if (attacks & (1n << BigInt(j))) {
+            const target = 1n << BigInt(j);
+            if (target & notMyPieces) {
+              const move = { mask: piece | target, piece: type };
+              if (target & oppPieces) {
+                move.capture = target;
+              }
+              moves.push(move);
+            }
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  northEastMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+        let attacks = this.northEastMask(piece);
+        const blockers = this.occupied & attacks;
+        if (blockers) {
+          const square = this.lsb(blockers);
+          attacks ^= this.northEastMask(square);
+        }
+
+        for (let j = 0; j < 64; j++) {
+          if (attacks & (1n << BigInt(j))) {
+            const target = 1n << BigInt(j);
+            if (target & notMyPieces) {
+              const move = { mask: piece | target, piece: type };
+              if (target & oppPieces) {
+                move.capture = target;
+              }
+              moves.push(move);
+            }
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  southMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+        let attacks = this.southMask(piece);
+        const blockers = this.occupied & attacks;
+        if (blockers) {
+          const square = this.msb(blockers);
+          attacks ^= this.southMask(square);
+        }
+
+        for (let j = 0; j < 64; j++) {
+          if (attacks & (1n << BigInt(j))) {
+            const target = 1n << BigInt(j);
+            if (target & notMyPieces) {
+              const move = { mask: piece | target, piece: type };
+              if (target & oppPieces) {
+                move.capture = target;
+              }
+              moves.push(move);
+            }
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  westMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+        let attacks = this.westMask(piece);
+        const blockers = this.occupied & attacks;
+        if (blockers) {
+          const square = this.lsb(blockers);
+          attacks ^= this.westMask(square);
+        }
+
+        for (let j = 0; j < 64; j++) {
+          if (attacks & (1n << BigInt(j))) {
+            const target = 1n << BigInt(j);
+            if (target & notMyPieces) {
+              const move = { mask: piece | target, piece: type };
+              if (target & oppPieces) {
+                move.capture = target;
+              }
+              moves.push(move);
+            }
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  northMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+        let attacks = this.northMask(piece);
+        const blockers = this.occupied & attacks;
+        if (blockers) {
+          const square = this.lsb(blockers);
+          attacks ^= this.northMask(square);
+        }
+
+        for (let j = 0; j < 64; j++) {
+          if (attacks & (1n << BigInt(j))) {
+            const target = 1n << BigInt(j);
+            if (target & notMyPieces) {
+              const move = { mask: piece | target, piece: type };
+              if (target & oppPieces) {
+                move.capture = target;
+              }
+              moves.push(move);
+            }
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  eastMoves(type, notMyPieces, oppPieces) {
+    const moves = [];
+
+    for (let i = 0; i < 64; i++) {
+      if (this[type] & (1n << BigInt(i))) {
+        const piece = 1n << BigInt(i);
+        let attacks = this.eastMask(piece);
+        const blockers = this.occupied & attacks;
+        if (blockers) {
+          const square = this.msb(blockers);
+          attacks ^= this.eastMask(square);
+        }
+
+        for (let j = 0; j < 64; j++) {
+          if (attacks & (1n << BigInt(j))) {
+            const target = 1n << BigInt(j);
+            if (target & notMyPieces) {
+              const move = { mask: piece | target, piece: type };
+              if (target & oppPieces) {
+                move.capture = target;
+              }
+              moves.push(move);
+            }
+          }
+        }
+      }
+    }
+
+    return moves;
+  }
+
+  southWestMask(piece) {
+    let mask = 0n;
+
+    for (let i = 1n; i <= 7n; i++) {
+      if ((piece >> (i * 7n)) & ~this.FILE_H) {
+        mask |= piece >> (i * 7n);
+      } else break;
+    }
+
+    return mask;
+  }
+
+  southEastMask(piece) {
+    let mask = 0n;
+
+    for (let i = 1n; i <= 7n; i++) {
+      if ((piece >> (i * 9n)) & ~this.FILE_A) {
+        mask |= piece >> (i * 9n);
+      } else break;
+    }
+
+    return mask;
+  }
+
+  northWestMask(piece) {
+    let mask = 0n;
+
+    for (let i = 1n; i <= 7n; i++) {
+      if ((piece << (i * 9n)) & ~this.FILE_H) {
+        mask |= piece << (i * 9n);
+      } else break;
+    }
+
+    return mask;
+  }
+
+  northEastMask(piece) {
+    let mask = 0n;
+
+    for (let i = 1n; i <= 7n; i++) {
+      if ((piece << (i * 7n)) & ~this.FILE_A) {
+        mask |= piece << (i * 7n);
+      } else break;
+    }
+
+    return mask;
+  }
+
+  southMask(piece) {
+    let mask = 0n;
+
+    for (let i = 1n; i <= 7n; i++) {
+      mask |= piece >> (i * 8n);
+    }
+
+    return mask;
+  }
+
+  westMask(piece) {
+    let mask = 0n;
+
+    for (let i = 1n; i <= 7n; i++) {
+      if ((piece << i) & ~this.FILE_H) {
+        mask |= piece << i;
+      } else break;
+    }
+
+    return mask;
+  }
+
+  northMask(piece) {
+    let mask = 0n;
+
+    for (let i = 1n; i <= 7n; i++) {
+      mask |= piece << (i * 8n);
+    }
+
+    return mask;
+  }
+
+  eastMask(piece) {
+    let mask = 0n;
+
+    for (let i = 1n; i <= 7n; i++) {
+      if ((piece >> i) & ~this.FILE_A) {
+        mask |= piece >> i;
+      } else break;
+    }
+
+    return mask;
+  }
+
+  msb(bb) {
+    let bbString = bb.toString(2);
+    while (bbString.length < 64) {
+      bbString = `0${bbString}`;
+    }
+    const index = bbString.indexOf('1');
+
+    return 1n << BigInt(63 - index);
+  }
+
+  lsb(bb) {
+    let bbString = bb.toString(2);
+    while (bbString.length < 64) {
+      bbString = `0${bbString}`;
+    }
+    const index = bbString.lastIndexOf('1');
+
+    return 1n << BigInt(63 - index);
   }
 
   // convient au deux couleur juste changer notMyPieces
@@ -411,43 +828,6 @@ export class Aurora {
             moves.push(move);
           }
         }
-      }
-    }
-
-    return moves;
-  }
-
-  whiteRooksMoves() {
-    const moves = [];
-
-    for (let i = 0; i < 64; i++) {
-      if (this.wr & (1n << BigInt(i))) {
-        let piece = 1n << BigInt(i);
-        let rank = 0;
-        let pieceRank = piece;
-        while (pieceRank > 0) {
-          rank++;
-          pieceRank >>= 8n;
-        }
-        const rankMask = 0xffn << BigInt((rank - 1) * 8);
-        const occupiedHorizontal =
-          (rankMask & this.occupied) >> BigInt((rank - 1) * 8);
-        piece >>= BigInt((rank - 1) * 8);
-
-        const right = 0x101010101010100n;
-
-        const lineAttacks =
-          occupiedHorizontal ^
-          (((occupiedHorizontal | right) - 2n * piece) & ~right) ^
-          (occupiedHorizontal ^
-            this.r(
-              ((this.r(occupiedHorizontal, 8) | right) -
-                2n * this.r(piece, 8)) &
-                ~right,
-              8,
-            ));
-
-        this.ascii(lineAttacks);
       }
     }
 
