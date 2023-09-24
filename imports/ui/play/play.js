@@ -8,15 +8,15 @@ import './play.css';
 const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // const fen = '8/3b4/8/5Q2/4r3/1q1R1bB1/8/8 w - - 0 1';
 
-// let shiftKey = false;
+let shiftKey = false;
 
-// $(document).on('keydown keyup', event => {
-//   if (event.shiftKey) {
-//     shiftKey = true;
-//   } else {
-//     shiftKey = false;
-//   }
-// });
+$(document).on('keydown keyup', event => {
+  if (event.shiftKey) {
+    shiftKey = true;
+  } else {
+    shiftKey = false;
+  }
+});
 
 Template.play.onRendered(() => {
   console.clear();
