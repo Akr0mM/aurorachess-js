@@ -25,6 +25,7 @@ export class Aurora {
 
     this.load(this.fen);
     this.getMoves();
+    this.ascii(this.unsafeForWhite());
   }
 
   load(fen) {
@@ -372,6 +373,139 @@ export class Aurora {
     return legalMove;
   }
 
+  unsafeForWhite() {
+    const notBlackPieces = BigInt(
+      ~(this.bp | this.br | this.bn | this.bb | this.bq | this.bk | this.wk),
+    );
+
+    const occupied = BigInt(
+      this.wp |
+        this.wr |
+        this.wn |
+        this.wb |
+        this.wq |
+        this.wk |
+        this.bp |
+        this.br |
+        this.bn |
+        this.bb |
+        this.bq |
+        this.bk,
+    );
+
+    // Pawn attacks
+    let unsafe = (this.bp >> 7n) & ~this.FILE_H; // pawn capture left
+    unsafe |= (this.bp >> 9n) & ~this.FILE_A; // pawn capture right
+
+    // Knights attacks
+    let loop = this.bn;
+    let piece = loop & ~(loop - 1n);
+    let knightAttacks;
+    while (piece !== 0n) {
+      const i = this.numberOfTrailingZeros(piece);
+
+      if (i > 18) {
+        knightAttacks = (this.KNIGHT_SPAN << BigInt(i - 18)) & notBlackPieces;
+      } else {
+        knightAttacks = (this.KNIGHT_SPAN >> BigInt(18 - i)) & notBlackPieces;
+      }
+
+      if (piece & this.FILE_AB) knightAttacks &= ~this.FILE_GH;
+      else if (piece & this.FILE_GH) knightAttacks &= ~this.FILE_AB;
+
+      unsafe |= knightAttacks;
+      // loop
+      loop &= ~piece;
+      piece = loop & ~(loop - 1n);
+    }
+
+    // Queens and Bishops diagonal and antidiagonal attacks
+    loop = this.bq | this.bb;
+    piece = loop & ~(loop - 1n);
+    let diagonalsAttacks;
+    while (piece !== 0n) {
+      diagonalsAttacks = this.southWestMask(piece);
+      let blockers = occupied & diagonalsAttacks;
+      if (blockers) {
+        const square = this.msb(blockers);
+        diagonalsAttacks ^= this.southWestMask(square);
+      }
+      unsafe |= diagonalsAttacks;
+
+      diagonalsAttacks = this.southEastMask(piece);
+      blockers = occupied & diagonalsAttacks;
+      if (blockers) {
+        const square = this.msb(blockers);
+        diagonalsAttacks ^= this.southEastMask(square);
+      }
+      unsafe |= diagonalsAttacks;
+
+      diagonalsAttacks = this.northWestMask(piece);
+      blockers = occupied & diagonalsAttacks;
+      if (blockers) {
+        const square = this.lsb(blockers);
+        diagonalsAttacks ^= this.northWestMask(square);
+      }
+      unsafe |= diagonalsAttacks;
+
+      diagonalsAttacks = this.northEastMask(piece);
+      blockers = occupied & diagonalsAttacks;
+      if (blockers) {
+        const square = this.lsb(blockers);
+        diagonalsAttacks ^= this.northEastMask(square);
+      }
+      unsafe |= diagonalsAttacks;
+
+      // loop
+      loop &= ~piece;
+      piece = loop & ~(loop - 1n);
+    }
+
+    // Queens and Rooks horizontal and vertical attacks
+    loop = this.bq | this.br;
+    piece = loop & ~(loop - 1n);
+    let filesAttacks;
+    while (piece !== 0n) {
+      filesAttacks = this.southMask(piece);
+      let blockers = occupied & filesAttacks;
+      if (blockers) {
+        const square = this.msb(blockers);
+        filesAttacks ^= this.southMask(square);
+      }
+      unsafe |= filesAttacks;
+
+      filesAttacks = this.westMask(piece);
+      blockers = occupied & filesAttacks;
+      if (blockers) {
+        const square = this.lsb(blockers);
+        filesAttacks ^= this.westMask(square);
+      }
+      unsafe |= filesAttacks;
+
+      filesAttacks = this.northMask(piece);
+      blockers = occupied & filesAttacks;
+      if (blockers) {
+        const square = this.lsb(blockers);
+        filesAttacks ^= this.northMask(square);
+      }
+      unsafe |= filesAttacks;
+
+      filesAttacks = this.eastMask(piece);
+      blockers = occupied & filesAttacks;
+      if (blockers) {
+        const square = this.msb(blockers);
+        filesAttacks ^= this.eastMask(square);
+      }
+      unsafe |= filesAttacks;
+
+      // loop
+      loop &= ~piece;
+      piece = loop & ~(loop - 1n);
+    }
+
+    return unsafe;
+  }
+
   getMoves() {
     const moves = [];
 
@@ -450,8 +584,7 @@ export class Aurora {
       moves.push(...this.blackCastlesMoves());
     }
 
-    // this.ascii(68719476736n);
-    // moves.forEach(move => this.ascii(move.mask, move.piece));
+    console.log(moves);
     return moves;
   }
 
@@ -844,13 +977,7 @@ export class Aurora {
   }
 
   lsb(bb) {
-    let bbString = bb.toString(2);
-    while (bbString.length < 64) {
-      bbString = `0${bbString}`;
-    }
-    const index = bbString.lastIndexOf('1');
-
-    return 1n << BigInt(63 - index);
+    return bb & ~(bb - 1n);
   }
 
   // convient au deux couleur juste changer notMyPieces
@@ -1411,16 +1538,31 @@ export class Aurora {
     return moves;
   }
 
-  r(binary, l) {
-    let binaryString = binary.toString(2);
-    while (binaryString.length < l) {
-      binaryString = `0${binaryString}`;
+  numberOfTrailingZeros(bb) {
+    return bb.toString(2).length - 1;
+  }
+
+  perft(depth) {
+    let totalMoves = 0;
+
+    const self = this;
+
+    function perftRecursive(currentDepth) {
+      if (currentDepth === 0) {
+        totalMoves++;
+        return;
+      }
+
+      self.getMoves().forEach(move => {
+        self.playMove(move);
+        perftRecursive(currentDepth - 1);
+        self.undoMove();
+      });
     }
 
-    const reversedBinary = binaryString.split('').reverse().join('');
-    const reversedDecimal = parseInt(reversedBinary, 2);
+    perftRecursive(depth);
 
-    return BigInt(reversedDecimal);
+    return totalMoves;
   }
 
   squareBitboard(square) {

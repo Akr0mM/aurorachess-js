@@ -7,6 +7,7 @@ const fen = {
   start: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
   random:
     'kQqNrBPR/rRbnQbQp/RbQQkPNQ/pBnRPqPp/QbpkKNKK/NqKBpBrp/pkRqnkKp/KrBpKRqr w - - 0 1',
+  pos2: 'r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ',
 };
 
 let aurora;
@@ -44,42 +45,42 @@ describe('Aurora Bitboards Initialization ', function () {
   });
 });
 
-describe('Aurora Get Moves', function () {
-  it('should give 20 moves from the starting position', function () {
+describe('Aurora Get Moves Form Starting Position', function () {
+  beforeEach(() => {
     aurora = new Aurora({ fen: fen.start });
-
-    const moves = aurora.getMoves();
-
-    assert.strictEqual(moves.length, 20);
   });
 
-  it('should give 400 moves from the starting position', function () {
-    aurora = new Aurora({ fen: fen.start });
-
-    let moves = 0;
-    aurora.getMoves().forEach(move => {
-      aurora.playMove(move);
-      moves += aurora.getMoves().length;
-      aurora.undoMove();
-    });
-
-    assert.strictEqual(moves, 400);
+  it('should give 20 moves (depth 1)', function () {
+    assert.strictEqual(aurora.perft(1), 20);
   });
 
-  it('should give 8902 moves from the starting position', function () {
-    aurora = new Aurora({ fen: fen.start });
+  it('should give 400 moves (depth 2)', function () {
+    assert.strictEqual(aurora.perft(2), 400);
+  });
 
-    let moves = 0;
-    aurora.getMoves().forEach(move => {
-      aurora.playMove(move);
-      aurora.getMoves().forEach(move1 => {
-        aurora.playMove(move1);
-        moves += aurora.getMoves().length;
-        aurora.undoMove();
-      });
-      aurora.undoMove();
-    });
+  it('should give 8902 moves (depth 3)', function () {
+    assert.strictEqual(aurora.perft(3), 8902);
+  });
 
-    assert.strictEqual(moves, 8902);
+  // it('should give 197,281 moves (depth 4)', function () {
+  //   assert.strictEqual(aurora.perft(4), 197281);
+  // });
+});
+
+describe('Aurora Get Moves Form Position 2', function () {
+  beforeEach(() => {
+    aurora = new Aurora({ fen: fen.pos2 });
+  });
+
+  it('should give 48 moves (depth 1)', function () {
+    assert.strictEqual(aurora.perft(1), 48);
+  });
+
+  it('should give 2039 moves (depth 2)', function () {
+    assert.strictEqual(aurora.perft(2), 2039);
+  });
+
+  it('should give 97862 moves (depth 3)', function () {
+    assert.strictEqual(aurora.perft(3), 97862);
   });
 });
