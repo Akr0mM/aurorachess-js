@@ -25,7 +25,6 @@ export class Aurora {
 
     this.load(this.fen);
     this.getMoves();
-    this.ascii(this.unsafeForWhite());
   }
 
   load(fen) {
@@ -374,10 +373,6 @@ export class Aurora {
   }
 
   unsafeForWhite() {
-    const notBlackPieces = BigInt(
-      ~(this.bp | this.br | this.bn | this.bb | this.bq | this.bk | this.wk),
-    );
-
     const occupied = BigInt(
       this.wp |
         this.wr |
@@ -393,7 +388,7 @@ export class Aurora {
         this.bk,
     );
 
-    // Pawn attacks
+    // // Pawn attacks
     let unsafe = (this.bp >> 7n) & ~this.FILE_H; // pawn capture left
     unsafe |= (this.bp >> 9n) & ~this.FILE_A; // pawn capture right
 
@@ -405,9 +400,9 @@ export class Aurora {
       const i = this.numberOfTrailingZeros(piece);
 
       if (i > 18) {
-        knightAttacks = (this.KNIGHT_SPAN << BigInt(i - 18)) & notBlackPieces;
+        knightAttacks = this.KNIGHT_SPAN << BigInt(i - 18);
       } else {
-        knightAttacks = (this.KNIGHT_SPAN >> BigInt(18 - i)) & notBlackPieces;
+        knightAttacks = this.KNIGHT_SPAN >> BigInt(18 - i);
       }
 
       if (piece & this.FILE_AB) knightAttacks &= ~this.FILE_GH;
@@ -415,7 +410,7 @@ export class Aurora {
 
       unsafe |= knightAttacks;
       // loop
-      loop &= ~piece;
+      loop ^= piece;
       piece = loop & ~(loop - 1n);
     }
 
@@ -498,6 +493,179 @@ export class Aurora {
       }
       unsafe |= filesAttacks;
 
+      // loop
+      loop &= ~piece;
+      piece = loop & ~(loop - 1n);
+    }
+
+    // King attacks
+    loop = this.bk;
+    piece = loop & ~(loop - 1n);
+    let kingAttacks;
+    while (piece !== 0n) {
+      const i = this.numberOfTrailingZeros(piece);
+
+      if (i > 9) {
+        kingAttacks = this.KING_SPAN << BigInt(i - 9);
+      } else {
+        kingAttacks = this.KING_SPAN >> BigInt(9 - i);
+      }
+
+      if (piece & this.FILE_A) kingAttacks &= ~this.FILE_H;
+      else if (piece & this.FILE_H) kingAttacks &= ~this.FILE_A;
+
+      unsafe |= kingAttacks;
+      // loop
+      loop &= ~piece;
+      piece = loop & ~(loop - 1n);
+    }
+
+    return unsafe;
+  }
+
+  unsafeForBlack() {
+    const occupied = BigInt(
+      this.wp |
+        this.wr |
+        this.wn |
+        this.wb |
+        this.wq |
+        this.wk |
+        this.bp |
+        this.br |
+        this.bn |
+        this.bb |
+        this.bq |
+        this.bk,
+    );
+
+    // // Pawn attacks
+    let unsafe = (this.wp << 7n) & ~this.FILE_A; // pawn capture left
+    unsafe |= (this.wp << 9n) & ~this.FILE_H; // pawn capture right
+
+    // Knights attacks
+    let loop = this.wn;
+    let piece = loop & ~(loop - 1n);
+    let knightAttacks;
+    while (piece !== 0n) {
+      const i = this.numberOfTrailingZeros(piece);
+
+      if (i > 18) {
+        knightAttacks = this.KNIGHT_SPAN << BigInt(i - 18);
+      } else {
+        knightAttacks = this.KNIGHT_SPAN >> BigInt(18 - i);
+      }
+
+      if (piece & this.FILE_AB) knightAttacks &= ~this.FILE_GH;
+      else if (piece & this.FILE_GH) knightAttacks &= ~this.FILE_AB;
+
+      unsafe |= knightAttacks;
+      // loop
+      loop ^= piece;
+      piece = loop & ~(loop - 1n);
+    }
+
+    // Queens and Bishops diagonal and antidiagonal attacks
+    loop = this.wq | this.wb;
+    piece = loop & ~(loop - 1n);
+    let diagonalsAttacks;
+    while (piece !== 0n) {
+      diagonalsAttacks = this.southWestMask(piece);
+      let blockers = occupied & diagonalsAttacks;
+      if (blockers) {
+        const square = this.msb(blockers);
+        diagonalsAttacks ^= this.southWestMask(square);
+      }
+      unsafe |= diagonalsAttacks;
+
+      diagonalsAttacks = this.southEastMask(piece);
+      blockers = occupied & diagonalsAttacks;
+      if (blockers) {
+        const square = this.msb(blockers);
+        diagonalsAttacks ^= this.southEastMask(square);
+      }
+      unsafe |= diagonalsAttacks;
+
+      diagonalsAttacks = this.northWestMask(piece);
+      blockers = occupied & diagonalsAttacks;
+      if (blockers) {
+        const square = this.lsb(blockers);
+        diagonalsAttacks ^= this.northWestMask(square);
+      }
+      unsafe |= diagonalsAttacks;
+
+      diagonalsAttacks = this.northEastMask(piece);
+      blockers = occupied & diagonalsAttacks;
+      if (blockers) {
+        const square = this.lsb(blockers);
+        diagonalsAttacks ^= this.northEastMask(square);
+      }
+      unsafe |= diagonalsAttacks;
+
+      // loop
+      loop &= ~piece;
+      piece = loop & ~(loop - 1n);
+    }
+
+    // Queens and Rooks horizontal and vertical attacks
+    loop = this.wq | this.wr;
+    piece = loop & ~(loop - 1n);
+    let filesAttacks;
+    while (piece !== 0n) {
+      filesAttacks = this.southMask(piece);
+      let blockers = occupied & filesAttacks;
+      if (blockers) {
+        const square = this.msb(blockers);
+        filesAttacks ^= this.southMask(square);
+      }
+      unsafe |= filesAttacks;
+
+      filesAttacks = this.westMask(piece);
+      blockers = occupied & filesAttacks;
+      if (blockers) {
+        const square = this.lsb(blockers);
+        filesAttacks ^= this.westMask(square);
+      }
+      unsafe |= filesAttacks;
+
+      filesAttacks = this.northMask(piece);
+      blockers = occupied & filesAttacks;
+      if (blockers) {
+        const square = this.lsb(blockers);
+        filesAttacks ^= this.northMask(square);
+      }
+      unsafe |= filesAttacks;
+
+      filesAttacks = this.eastMask(piece);
+      blockers = occupied & filesAttacks;
+      if (blockers) {
+        const square = this.msb(blockers);
+        filesAttacks ^= this.eastMask(square);
+      }
+      unsafe |= filesAttacks;
+
+      // loop
+      loop &= ~piece;
+      piece = loop & ~(loop - 1n);
+    }
+
+    // King attacks
+    loop = this.wk;
+    piece = loop & ~(loop - 1n);
+    let kingAttacks;
+    while (piece !== 0n) {
+      const i = this.numberOfTrailingZeros(piece);
+
+      if (i > 9) {
+        kingAttacks = this.KING_SPAN << BigInt(i - 9);
+      } else {
+        kingAttacks = this.KING_SPAN >> BigInt(9 - i);
+      }
+
+      if (piece & this.FILE_A) kingAttacks &= ~this.FILE_H;
+      else if (piece & this.FILE_H) kingAttacks &= ~this.FILE_A;
+
+      unsafe |= kingAttacks;
       // loop
       loop &= ~piece;
       piece = loop & ~(loop - 1n);

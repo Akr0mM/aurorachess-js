@@ -6,12 +6,12 @@ import './play.html';
 import './play.css';
 
 const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-// const fen = 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1';
+// const fen = '';
 
 let aurora = null;
 
 $(document).on('keydown keyup', event => {
-  if (event.shiftKey && aurora) {
+  if (aurora && event.shiftKey) {
     aurora.shiftKey = true;
   } else {
     aurora.shiftKey = false;
