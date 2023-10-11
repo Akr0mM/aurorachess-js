@@ -45,7 +45,7 @@ describe('Aurora Bitboards Initialization ', function () {
   });
 });
 
-describe('Aurora Get Moves Form Starting Position', function () {
+describe('Aurora Get Moves From Starting Position', function () {
   beforeEach(() => {
     aurora = new Aurora({ fen: fen.start });
   });
@@ -67,7 +67,7 @@ describe('Aurora Get Moves Form Starting Position', function () {
   // });
 });
 
-describe('Aurora Get Moves Form Position 2', function () {
+describe('Aurora Get Moves From Position 2', function () {
   beforeEach(() => {
     aurora = new Aurora({ fen: fen.pos2 });
   });
