@@ -47,6 +47,10 @@ Template.play.onRendered(() => {
   // eslint-disable-next-line consistent-return
   function onSnapEnd() {
     board.position(aurora.getFEN());
+
+    if (aurora.turn === aurora.color) {
+      aurora.makeMove();
+    }
   }
 
   const boardConfig = {
@@ -64,6 +68,8 @@ Template.play.onRendered(() => {
   board = Chessboard('board', boardConfig);
 
   const config = {
+    autoplay: true,
+    color: false,
     fen,
     board,
   };

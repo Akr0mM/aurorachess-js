@@ -4,6 +4,8 @@ export class Aurora {
   constructor(config) {
     this.fen = config.fen;
     this.board = config.board;
+    this.color = config.color;
+    this.autoplay = config.autoplay;
     this.enPassant = '';
     this.undoHistory = [];
 
@@ -23,8 +25,22 @@ export class Aurora {
     this.KNIGHT_SPAN = 0xa1100110an;
     this.KING_SPAN = 0x70507n;
 
+    // material points
+    this.PAWN_VALUE = 100;
+    this.KNIGHT_VALUE = 350;
+    this.BISHOP_VALUE = 350;
+    this.ROOK_VALUE = 525;
+    this.QUEEN_VALUE = 1000;
+    this.BISHOP_PAIR_VALUE = 35;
+
     this.load(this.fen);
-    this.getMoves();
+
+    if (this.color) {
+      this.board.flip();
+      this.makeMove();
+    }
+
+    console.log(this.evaluate());
   }
 
   load(fen) {
@@ -123,6 +139,16 @@ export class Aurora {
     this.bk = BigInt(`0b${bb.bk}`);
   }
 
+  makeMove() {
+    const moves = this.getMoves();
+    const random = Math.floor(Math.random() * moves.length);
+    const move = moves[random];
+    this.playMove(move);
+    this.board.position(this.getFEN());
+    this.board.resize();
+    console.log(this.evaluate());
+  }
+
   playMove(move) {
     // update the bitboard of the piece that play
     this[move.piece] ^= move.mask;
@@ -133,7 +159,7 @@ export class Aurora {
     this.turn = !this.turn;
 
     // check if move is a capture to update the capture piece's bitboard (remove the piece)
-    if (move.capture) {
+    if (move.capture && !move.capture.mask) {
       if (this.turn) this.captureWhitePiece(move.capture, undo);
       else this.captureBlackPiece(move.capture, undo);
     }
@@ -294,6 +320,31 @@ export class Aurora {
       capture.piece = 'wq';
     }
     undo.capture = capture;
+  }
+
+  evaluate() {
+    // material
+    let white = this.numberOfOnes(this.wp) * this.PAWN_VALUE;
+    white += this.numberOfOnes(this.wr) * this.ROOK_VALUE;
+    white += this.numberOfOnes(this.wn) * this.KNIGHT_VALUE;
+    white += this.numberOfOnes(this.wb) * this.BISHOP_VALUE;
+    white += this.numberOfOnes(this.wq) * this.QUEEN_VALUE;
+
+    let black = this.numberOfOnes(this.bp) * this.PAWN_VALUE;
+    black += this.numberOfOnes(this.br) * this.ROOK_VALUE;
+    black += this.numberOfOnes(this.bn) * this.KNIGHT_VALUE;
+    black += this.numberOfOnes(this.bb) * this.BISHOP_VALUE;
+    black += this.numberOfOnes(this.bq) * this.QUEEN_VALUE;
+
+    const materialDiff = white - black;
+
+    // bishop pair bonus
+    const whiteBishopPair =
+      this.numberOfOnes(this.wb) === 2 ? this.BISHOP_PAIR_VALUE : 0;
+    const blackBishopPair =
+      this.numberOfOnes(this.wb) === 2 ? -this.BISHOP_PAIR_VALUE : 0;
+
+    return materialDiff + whiteBishopPair + blackBishopPair;
   }
 
   undoMove() {
@@ -752,7 +803,7 @@ export class Aurora {
       moves.push(...this.blackCastlesMoves());
     }
 
-    console.log(moves);
+    // console.log(moves);
     return moves;
   }
 
@@ -1172,7 +1223,10 @@ export class Aurora {
             if ((1n << BigInt(j)) & oppPieces) {
               move.capture = 1n << BigInt(j);
             }
-            moves.push(move);
+
+            if (this.checkMove(move)) {
+              moves.push(move);
+            }
           }
         }
       }
@@ -1205,7 +1259,10 @@ export class Aurora {
             if ((1n << BigInt(j)) & oppPieces) {
               move.capture = 1n << BigInt(j);
             }
-            moves.push(move);
+
+            if (this.checkMove(move)) {
+              moves.push(move);
+            }
           }
         }
       }
@@ -1226,7 +1283,10 @@ export class Aurora {
         let mask = 1n << 7n;
         mask |= 1n;
         mask <<= BigInt(i);
-        moves.push({ mask, piece: 'bp', capture: 1n << BigInt(i) });
+        const move = { mask, piece: 'bp', capture: 1n << BigInt(i) };
+        if (this.checkMove(move)) {
+          moves.push(move);
+        }
       }
     }
 
@@ -1239,7 +1299,10 @@ export class Aurora {
         let mask = 1n << 9n;
         mask |= 1n;
         mask <<= BigInt(i);
-        moves.push({ mask, piece: 'bp', capture: 1n << BigInt(i) });
+        const move = { mask, piece: 'bp', capture: 1n << BigInt(i) };
+        if (this.checkMove(move)) {
+          moves.push(move);
+        }
       }
     }
 
@@ -1254,7 +1317,10 @@ export class Aurora {
           let mask = 1n << 7n;
           mask |= 1n;
           mask <<= BigInt(i) - 8n;
-          moves.push({ mask, piece: 'bp', enPassant: enPassantMask });
+          const move = { mask, piece: 'bp', enPassant: enPassantMask };
+          if (this.checkMove(move)) {
+            moves.push(move);
+          }
         }
       }
     }
@@ -1270,7 +1336,10 @@ export class Aurora {
           let mask = 1n << 9n;
           mask |= 1n;
           mask <<= BigInt(i) - 8n;
-          moves.push({ mask, piece: 'bp', enPassant: enPassantMask });
+          const move = { mask, piece: 'bp', enPassant: enPassantMask };
+          if (this.checkMove(move)) {
+            moves.push(move);
+          }
         }
       }
     }
@@ -1283,7 +1352,10 @@ export class Aurora {
         let mask = 1n << 8n;
         mask |= 1n;
         mask <<= BigInt(i);
-        moves.push({ mask, piece: 'bp' });
+        const move = { mask, piece: 'bp' };
+        if (this.checkMove(move)) {
+          moves.push(move);
+        }
       }
     }
 
@@ -1297,7 +1369,10 @@ export class Aurora {
         mask |= 1n;
         mask <<= BigInt(i);
         const enPassantMask = 1n << (BigInt(i) + 8n);
-        moves.push({ mask, piece: 'bp', enableEnPassant: enPassantMask });
+        const move = { mask, piece: 'bp', enableEnPassant: enPassantMask };
+        if (this.checkMove(move)) {
+          moves.push(move);
+        }
       }
     }
 
@@ -1322,25 +1397,36 @@ export class Aurora {
           capture: promotionMask,
         };
 
-        moves.push(moveQueen);
+        if (this.checkMove(moveQueen)) {
+          moves.push(moveQueen);
+        }
 
         const moveKnight = {
           ...moveQueen,
           promotion: { piece: 'bn', mask: promotionMask },
         };
-        moves.push(moveKnight);
+
+        if (this.checkMove(moveKnight)) {
+          moves.push(moveKnight);
+        }
 
         const moveRook = {
           ...moveQueen,
           promotion: { piece: 'br', mask: promotionMask },
         };
-        moves.push(moveRook);
+
+        if (this.checkMove(moveRook)) {
+          moves.push(moveRook);
+        }
 
         const moveBishop = {
           ...moveQueen,
           promotion: { piece: 'bb', mask: promotionMask },
         };
-        moves.push(moveBishop);
+
+        if (this.checkMove(moveBishop)) {
+          moves.push(moveBishop);
+        }
       }
     }
 
@@ -1363,25 +1449,36 @@ export class Aurora {
           capture: promotionMask,
         };
 
-        moves.push(moveQueen);
+        if (this.checkMove(moveQueen)) {
+          moves.push(moveQueen);
+        }
 
         const moveKnight = {
           ...moveQueen,
           promotion: { piece: 'bn', mask: promotionMask },
         };
-        moves.push(moveKnight);
+
+        if (this.checkMove(moveKnight)) {
+          moves.push(moveKnight);
+        }
 
         const moveRook = {
           ...moveQueen,
           promotion: { piece: 'br', mask: promotionMask },
         };
-        moves.push(moveRook);
+
+        if (this.checkMove(moveRook)) {
+          moves.push(moveRook);
+        }
 
         const moveBishop = {
           ...moveQueen,
           promotion: { piece: 'bb', mask: promotionMask },
         };
-        moves.push(moveBishop);
+
+        if (this.checkMove(moveBishop)) {
+          moves.push(moveBishop);
+        }
       }
     }
 
@@ -1401,25 +1498,36 @@ export class Aurora {
           promotion: { piece: 'bq', mask: promotionMask },
         };
 
-        moves.push(moveQueen);
+        if (this.checkMove(moveQueen)) {
+          moves.push(moveQueen);
+        }
 
         const moveKnight = {
           ...moveQueen,
           promotion: { piece: 'bn', mask: promotionMask },
         };
-        moves.push(moveKnight);
+
+        if (this.checkMove(moveKnight)) {
+          moves.push(moveKnight);
+        }
 
         const moveRook = {
           ...moveQueen,
           promotion: { piece: 'br', mask: promotionMask },
         };
-        moves.push(moveRook);
+
+        if (this.checkMove(moveRook)) {
+          moves.push(moveRook);
+        }
 
         const moveBishop = {
           ...moveQueen,
           promotion: { piece: 'bb', mask: promotionMask },
         };
-        moves.push(moveBishop);
+
+        if (this.checkMove(moveBishop)) {
+          moves.push(moveBishop);
+        }
       }
     }
 
@@ -1438,7 +1546,10 @@ export class Aurora {
         let mask = 1n << 7n;
         mask |= 1n;
         mask <<= BigInt(i) - 7n;
-        moves.push({ mask, piece: 'wp', capture: 1n << BigInt(i) });
+        const move = { mask, piece: 'wp', capture: 1n << BigInt(i) };
+        if (this.checkMove(move)) {
+          moves.push(move);
+        }
       }
     }
 
@@ -1451,7 +1562,10 @@ export class Aurora {
         let mask = 1n << 9n;
         mask |= 1n;
         mask <<= BigInt(i) - 9n;
-        moves.push({ mask, piece: 'wp', capture: 1n << BigInt(i) });
+        const move = { mask, piece: 'wp', capture: 1n << BigInt(i) };
+        if (this.checkMove(move)) {
+          moves.push(move);
+        }
       }
     }
 
@@ -1466,7 +1580,10 @@ export class Aurora {
           let mask = 1n << 7n;
           mask |= 1n;
           mask <<= BigInt(i) + 1n;
-          moves.push({ mask, piece: 'wp', enPassant: enPassantMask });
+          const move = { mask, piece: 'wp', enPassant: enPassantMask };
+          if (this.checkMove(move)) {
+            moves.push(move);
+          }
         }
       }
     }
@@ -1482,7 +1599,10 @@ export class Aurora {
           let mask = 1n << 9n;
           mask |= 1n;
           mask <<= BigInt(i) - 1n;
-          moves.push({ mask, piece: 'wp', enPassant: enPassantMask });
+          const move = { mask, piece: 'wp', enPassant: enPassantMask };
+          if (this.checkMove(move)) {
+            moves.push(move);
+          }
         }
       }
     }
@@ -1495,7 +1615,10 @@ export class Aurora {
         let mask = 1n << 8n;
         mask |= 1n;
         mask <<= BigInt(i) - 8n;
-        moves.push({ mask, piece: 'wp' });
+        const move = { mask, piece: 'wp' };
+        if (this.checkMove(move)) {
+          moves.push(move);
+        }
       }
     }
 
@@ -1509,7 +1632,10 @@ export class Aurora {
         mask |= 1n;
         mask <<= BigInt(i) - 16n;
         const enPassantMask = 1n << (BigInt(i) - 8n);
-        moves.push({ mask, piece: 'wp', enableEnPassant: enPassantMask });
+        const move = { mask, piece: 'wp', enableEnPassant: enPassantMask };
+        if (this.checkMove(move)) {
+          moves.push(move);
+        }
       }
     }
 
@@ -1534,25 +1660,36 @@ export class Aurora {
           capture: promotionMask,
         };
 
-        moves.push(moveQueen);
+        if (this.checkMove(moveQueen)) {
+          moves.push(moveQueen);
+        }
 
         const moveKnight = {
           ...moveQueen,
           promotion: { piece: 'wn', mask: promotionMask },
         };
-        moves.push(moveKnight);
+
+        if (this.checkMove(moveKnight)) {
+          moves.push(moveKnight);
+        }
 
         const moveRook = {
           ...moveQueen,
           promotion: { piece: 'wr', mask: promotionMask },
         };
-        moves.push(moveRook);
+
+        if (this.checkMove(moveRook)) {
+          moves.push(moveRook);
+        }
 
         const moveBishop = {
           ...moveQueen,
           promotion: { piece: 'wb', mask: promotionMask },
         };
-        moves.push(moveBishop);
+
+        if (this.checkMove(moveBishop)) {
+          moves.push(moveBishop);
+        }
       }
     }
 
@@ -1575,25 +1712,36 @@ export class Aurora {
           capture: promotionMask,
         };
 
-        moves.push(moveQueen);
+        if (this.checkMove(moveQueen)) {
+          moves.push(moveQueen);
+        }
 
         const moveKnight = {
           ...moveQueen,
           promotion: { piece: 'wn', mask: promotionMask },
         };
-        moves.push(moveKnight);
+
+        if (this.checkMove(moveKnight)) {
+          moves.push(moveKnight);
+        }
 
         const moveRook = {
           ...moveQueen,
           promotion: { piece: 'wr', mask: promotionMask },
         };
-        moves.push(moveRook);
+
+        if (this.checkMove(moveRook)) {
+          moves.push(moveRook);
+        }
 
         const moveBishop = {
           ...moveQueen,
           promotion: { piece: 'wb', mask: promotionMask },
         };
-        moves.push(moveBishop);
+
+        if (this.checkMove(moveBishop)) {
+          moves.push(moveBishop);
+        }
       }
     }
 
@@ -1613,25 +1761,36 @@ export class Aurora {
           promotion: { piece: 'wq', mask: promotionMask },
         };
 
-        moves.push(moveQueen);
+        if (this.checkMove(moveQueen)) {
+          moves.push(moveQueen);
+        }
 
         const moveKnight = {
           ...moveQueen,
           promotion: { piece: 'wn', mask: promotionMask },
         };
-        moves.push(moveKnight);
+
+        if (this.checkMove(moveKnight)) {
+          moves.push(moveKnight);
+        }
 
         const moveRook = {
           ...moveQueen,
           promotion: { piece: 'wr', mask: promotionMask },
         };
-        moves.push(moveRook);
+
+        if (this.checkMove(moveRook)) {
+          moves.push(moveRook);
+        }
 
         const moveBishop = {
           ...moveQueen,
           promotion: { piece: 'wb', mask: promotionMask },
         };
-        moves.push(moveBishop);
+
+        if (this.checkMove(moveBishop)) {
+          moves.push(moveBishop);
+        }
       }
     }
 
@@ -1706,8 +1865,35 @@ export class Aurora {
     return moves;
   }
 
+  checkMove(move) {
+    // this.playMove(move);
+    // let legalMove;
+
+    // if (this.turn) {
+    //   if (this.unsafeForBlack() & this.bk) legalMove = false;
+    //   else legalMove = true;
+    // } else if (this.unsafeForWhite() & this.wk) legalMove = false;
+    // else legalMove = true;
+
+    // this.undoMove();
+    // return legalMove;
+
+    return true;
+  }
+
   numberOfTrailingZeros(bb) {
     return bb.toString(2).length - 1;
+  }
+
+  numberOfOnes(bb) {
+    let count = 0n;
+
+    while (bb > 0n) {
+      count += bb & 1n;
+      bb >>= 1n;
+    }
+
+    return Number(count);
   }
 
   perft(depth) {
