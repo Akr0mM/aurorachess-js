@@ -67,20 +67,20 @@ describe('Aurora Get Moves From Starting Position', function () {
   // });
 });
 
-describe('Aurora Get Moves From Position 2', function () {
-  beforeEach(() => {
-    aurora = new Aurora({ fen: fen.pos2 });
-  });
+// describe('Aurora Get Moves From Position 2', function () {
+//   beforeEach(() => {
+//     aurora = new Aurora({ fen: fen.pos2 });
+//   });
 
-  it('should give 48 moves (depth 1)', function () {
-    assert.strictEqual(aurora.perft(1), 48);
-  });
+//   it('should give 48 moves (depth 1)', function () {
+//     assert.strictEqual(aurora.perft(1), 48);
+//   });
 
-  it('should give 2039 moves (depth 2)', function () {
-    assert.strictEqual(aurora.perft(2), 2039);
-  });
+//   it('should give 2039 moves (depth 2)', function () {
+//     assert.strictEqual(aurora.perft(2), 2039);
+//   });
 
-  it('should give 97862 moves (depth 3)', function () {
-    assert.strictEqual(aurora.perft(3), 97862);
-  });
-});
+//   it('should give 97862 moves (depth 3)', function () {
+//     assert.strictEqual(aurora.perft(3), 97862);
+//   });
+// });

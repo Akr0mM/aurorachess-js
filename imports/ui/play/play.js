@@ -28,6 +28,12 @@ Template.play.onRendered(() => {
       aurora.undoMove();
       board.position(aurora.getFEN());
       board.resize();
+
+      if (aurora.autoplay) {
+        aurora.undoMove();
+        board.position(aurora.getFEN());
+        board.resize();
+      }
     }
   });
 
@@ -47,9 +53,12 @@ Template.play.onRendered(() => {
   // eslint-disable-next-line consistent-return
   function onSnapEnd() {
     board.position(aurora.getFEN());
+    board.resize();
 
-    if (aurora.turn === aurora.color) {
-      aurora.makeMove();
+    if (aurora.autoplay && aurora.turn === aurora.color) {
+      aurora.makeMove(2);
+      board.position(aurora.getFEN());
+      board.resize();
     }
   }
 
@@ -68,7 +77,7 @@ Template.play.onRendered(() => {
   board = Chessboard('board', boardConfig);
 
   const config = {
-    autoplay: true,
+    autoplay: false,
     color: false,
     fen,
     board,

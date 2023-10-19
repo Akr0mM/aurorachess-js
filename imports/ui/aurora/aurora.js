@@ -8,6 +8,7 @@ export class Aurora {
     this.autoplay = config.autoplay;
     this.enPassant = '';
     this.undoHistory = [];
+    this.stage = 'MG';
 
     // bitboards mask
     this.FILE_A = 0x8080808080808080n;
@@ -25,13 +26,75 @@ export class Aurora {
     this.KNIGHT_SPAN = 0xa1100110an;
     this.KING_SPAN = 0x70507n;
 
-    // material points
+    // material value
     this.PAWN_VALUE = 100;
     this.KNIGHT_VALUE = 350;
-    this.BISHOP_VALUE = 350;
+    this.BISHOP_VALUE = 355;
     this.ROOK_VALUE = 525;
     this.QUEEN_VALUE = 1000;
     this.BISHOP_PAIR_VALUE = 35;
+
+    // white pieces square tables
+    this.WHITE_PAWNS_SQUARE_TABLE = [
+      { mask: 0xff000000000000n, score: 50 },
+      { mask: 0x180000000000n, score: 30 },
+      { mask: 0x1800000000n, score: 25 },
+      { mask: 0x240018000000n, score: 20 },
+      { mask: 0xc32400006600n, score: 10 },
+      { mask: 0xc300818100n, score: 5 },
+      { mask: 0x420000n, score: -5 },
+      { mask: 0x240000n, score: -10 },
+      { mask: 0x1800n, score: -20 },
+    ];
+    this.WHITE_KNIGHTS_SQUARE_TABLE = [
+      { mask: 0x1818000000n, score: 20 },
+      { mask: 0x182424180000n, score: 15 },
+      { mask: 0x240000240000n, score: 10 },
+      { mask: 0x4200421800n, score: 5 },
+      { mask: 0x42000000004200n, score: -20 },
+      { mask: 0x3c0081818181003cn, score: -30 },
+      { mask: 0x4281000000008142n, score: -40 },
+      { mask: 0x8100000000000081n, score: -50 },
+    ];
+    this.WHITE_BISHOPS_SQUARE_TABLE = [
+      { mask: 0x18183c7e0000n, score: 10 },
+      { mask: 0x246600004200n, score: 5 },
+      { mask: 0x7e8181818181817en, score: -10 },
+      { mask: 0x8100000000000081n, score: -20 },
+    ];
+    this.WHITE_ROOKS_SQUARE_TABLE = [
+      { mask: 0x7e000000000000n, score: 10 },
+      { mask: 0x81000000000018n, score: 5 },
+      { mask: 0x818181818100n, score: -5 },
+    ];
+    this.WHITE_QUEENS_SQUARE_TABLE = [
+      { mask: 0x3c3c3c7c2000n, score: 5 },
+      { mask: 0x1800008101000018n, score: -5 },
+      { mask: 0x6681810000818166n, score: -10 },
+      { mask: 0x8100000000000081n, score: -20 },
+    ];
+    this.MG_WHITE_KING_SQUARE_TABLE = [
+      { mask: 0x42n, score: 30 },
+      { mask: 0xc381n, score: 20 },
+      { mask: 0x24n, score: 10 },
+      { mask: 0x810000n, score: -10 },
+      { mask: 0x817e0000n, score: -20 },
+      { mask: 0x8181818166000000n, score: -30 },
+      { mask: 0x6666666618000000n, score: -40 },
+      { mask: 0x1818181800000000n, score: -50 },
+    ];
+    this.EG_WHITE_KING_SQUARE_TABLE = [
+      { mask: 0x1818000000n, score: 40 },
+      { mask: 0x182424180000n, score: 30 },
+      { mask: 0x240000240000n, score: 20 },
+      { mask: 0x24424242420000n, score: -10 },
+      { mask: 0x1842000000000000n, score: -20 },
+      { mask: 0x248181818181c37en, score: -30 },
+      { mask: 0x4200000000000000n, score: -40 },
+      { mask: 0x8100000000000081n, score: -50 },
+    ];
+
+    // this.ascii();
 
     this.load(this.fen);
 
@@ -40,7 +103,14 @@ export class Aurora {
       this.makeMove();
     }
 
-    console.log(this.evaluate());
+    // console.log(this.evaluate());
+
+    // last : ~230ms
+    // console.time('Evaluation');
+    // for (let i = 0; i < 10000; i++) {
+    //   this.evaluate();
+    // }
+    // console.timeEnd('Evaluation');
   }
 
   load(fen) {
@@ -139,14 +209,62 @@ export class Aurora {
     this.bk = BigInt(`0b${bb.bk}`);
   }
 
-  makeMove() {
+  makeMove(depth) {
+    const self = this;
+
+    function minimax(currentDepth, alpha, beta) {
+      if (currentDepth === 0) {
+        return self.evaluate();
+      }
+
+      const moves = self.getMoves();
+
+      if (moves.length === 0) {
+        if (self.playerInCheck()) {
+          return Number.NEGATIVE_INFINITY;
+        }
+        return 0;
+      }
+
+      for (let i = 0; i < moves.length; i++) {
+        self.playMove(moves[i]);
+        const evaluation = -minimax(currentDepth - 1, -beta, -alpha);
+        self.undoMove();
+        if (evaluation >= beta) {
+          return beta;
+        }
+        alpha = Math.max(alpha, evaluation);
+      }
+
+      return alpha;
+    }
+
     const moves = this.getMoves();
-    const random = Math.floor(Math.random() * moves.length);
-    const move = moves[random];
-    this.playMove(move);
-    this.board.position(this.getFEN());
-    this.board.resize();
-    console.log(this.evaluate());
+    const movesEvaluated = [];
+
+    for (let i = 0; i < moves.length; i++) {
+      this.playMove(moves[i]);
+      movesEvaluated.push([
+        moves[i],
+        -minimax(depth - 1, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY),
+      ]);
+      this.undoMove();
+    }
+
+    const bestEval = movesEvaluated.reduce(
+      (max, move) => Math.max(max, move[1]),
+      -Infinity,
+    );
+
+    const bestMoves = movesEvaluated.filter(move => move[1] === bestEval);
+
+    if (bestMoves.length > 1) {
+      this.playMove(bestMoves[Math.floor(Math.random() * bestMoves.length)][0]);
+    } else this.playMove(bestMoves[0][0]);
+  }
+
+  playerInCheck() {
+    return false;
   }
 
   playMove(move) {
@@ -277,6 +395,11 @@ export class Aurora {
       this.enPassant = null;
     }
 
+    // check et change le game stage
+    if (move.capture && this.stage !== 'EG') {
+      this.checkGameStage();
+    }
+
     this.undoHistory.unshift(undo);
   }
 
@@ -344,7 +467,48 @@ export class Aurora {
     const blackBishopPair =
       this.numberOfOnes(this.wb) === 2 ? -this.BISHOP_PAIR_VALUE : 0;
 
-    return materialDiff + whiteBishopPair + blackBishopPair;
+    // white pieces square table bonus
+    this.evaluateSquareTable(this.WHITE_PAWNS_SQUARE_TABLE, 'wp');
+    this.evaluateSquareTable(this.WHITE_KNIGHTS_SQUARE_TABLE, 'wn');
+    this.evaluateSquareTable(this.WHITE_BISHOPS_SQUARE_TABLE, 'wb');
+    this.evaluateSquareTable(this.WHITE_QUEENS_SQUARE_TABLE, 'wq');
+    this.evaluateSquareTable(
+      this[`${this.stage}_WHITE_KING_SQUARE_TABLE`],
+      'wk',
+    );
+
+    const persperctive = this.turn ? 1 : -1;
+
+    return (materialDiff + whiteBishopPair + blackBishopPair) * persperctive;
+  }
+
+  evaluateSquareTable(squareTable, piece) {
+    // ? break la loupe des tables si tout les pieces du bb ont été trouvés
+
+    let score = 0;
+    squareTable.forEach(table => {
+      score += this.numberOfOnes(this[piece] & table.mask) * table.score;
+    });
+
+    // ? ↓ //
+    // let score = 0;
+    // const pieces = this.numberOfOnes(this[piece]);
+    // let discover = 0;
+    // for (let i = 0; i < squareTable.length; i++) {
+    //   const point =
+    //     this.numberOfOnes(this[piece] & squareTable[i].mask) *
+    //     squareTable[i].score;
+
+    //   if (point) {
+    //     score += point;
+    //     discover += 1;
+    //     if (discover === pieces) break;
+    //   }
+    // }
+
+    // console.log(`${piece} points square table`, score);
+
+    return score;
   }
 
   undoMove() {
@@ -439,7 +603,7 @@ export class Aurora {
         this.bk,
     );
 
-    // // Pawn attacks
+    // Pawn attacks
     let unsafe = (this.bp >> 7n) & ~this.FILE_H; // pawn capture left
     unsafe |= (this.bp >> 9n) & ~this.FILE_A; // pawn capture right
 
@@ -1894,6 +2058,27 @@ export class Aurora {
     }
 
     return Number(count);
+  }
+
+  checkGameStage() {
+    const bothSideNoQueen =
+      this.numberOfOnes(this.wq) === 0 && this.numberOfOnes(this.bq) === 0;
+
+    const noMinorPiece =
+      !bothSideNoQueen &&
+      this.numberOfOnes(this.wr) +
+        this.numberOfOnes(this.wn) +
+        this.numberOfOnes(this.wb) <=
+        1 &&
+      this.numberOfOnes(this.br) +
+        this.numberOfOnes(this.bn) +
+        this.numberOfOnes(this.bb) <=
+        1;
+
+    if (bothSideNoQueen || noMinorPiece) {
+      console.warn('Change Game Stage to EG');
+      this.stage = 'EG';
+    }
   }
 
   perft(depth) {
