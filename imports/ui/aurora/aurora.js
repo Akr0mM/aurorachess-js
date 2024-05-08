@@ -1544,7 +1544,7 @@ export class Aurora {
 
     // pawn capture right promotion
     const captureRightPromotionMoves =
-      (this.bp >> 7n) & this.whitePieces & this.RANK_1;
+      (this.bp >> 7n) & this.whitePieces & this.RANK_1 & ~this.FILE_H;
 
     // peut peut etre ajouter un if (captureRightPromotionMoves) pour pas faire les 64 boucles pour rien
     for (let i = 0; i < 64; i++) {
